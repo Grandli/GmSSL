@@ -296,6 +296,7 @@ void sm3_compress_blocks(uint32_t digest[8], const uint8_t *data, size_t blocks)
 }
 #endif
 
+//sm3初始化上下文
 void sm3_init(SM3_CTX *ctx)
 {
 	memset(ctx, 0, sizeof(*ctx));
@@ -308,12 +309,12 @@ void sm3_init(SM3_CTX *ctx)
 	ctx->digest[6] = 0xE38DEE4D;
 	ctx->digest[7] = 0xB0FB0E4E;
 }
-
+//sm3数据更新处理
 void sm3_update(SM3_CTX *ctx, const uint8_t *data, size_t data_len)
 {
 	size_t blocks;
 
-	ctx->num &= 0x3f;
+	ctx->num &= 0x3f;//ctx->num%=64(即取整块的剩余数）
 	if (ctx->num) {
 		size_t left = SM3_BLOCK_SIZE - ctx->num;
 		if (data_len < left) {
@@ -322,6 +323,7 @@ void sm3_update(SM3_CTX *ctx, const uint8_t *data, size_t data_len)
 			return;
 		} else {
 			memcpy(ctx->block + ctx->num, data, left);
+            //实际的哈希压缩运算
 			sm3_compress_blocks(ctx->digest, ctx->block, 1);
 			ctx->nblocks++;
 			data += left;
@@ -329,12 +331,14 @@ void sm3_update(SM3_CTX *ctx, const uint8_t *data, size_t data_len)
 		}
 	}
 
-	blocks = data_len / SM3_BLOCK_SIZE;
+    //处理的数据都是整块的整数倍
+	blocks = (data_len>>6);// SM3_BLOCK_SIZE;
 	if (blocks) {
+        //实际的哈希压缩运算
 		sm3_compress_blocks(ctx->digest, data, blocks);
 		ctx->nblocks += blocks;
-		data += SM3_BLOCK_SIZE * blocks;
-		data_len -= SM3_BLOCK_SIZE * blocks;
+		data += (blocks<<6);
+		data_len -= (blocks<<6);
 	}
 
 	ctx->num = data_len;
@@ -342,7 +346,7 @@ void sm3_update(SM3_CTX *ctx, const uint8_t *data, size_t data_len)
 		memcpy(ctx->block, data, data_len);
 	}
 }
-
+//完成sm3运算
 void sm3_finish(SM3_CTX *ctx, uint8_t *digest)
 {
 	int i;
@@ -366,7 +370,7 @@ void sm3_finish(SM3_CTX *ctx, uint8_t *digest)
 	}
 	memset(ctx, 0, sizeof(SM3_CTX));
 }
-
+//单一接口的sm3运算
 void sm3_digest(const uint8_t *msg, size_t msglen,
 	uint8_t dgst[SM3_DIGEST_SIZE])
 {

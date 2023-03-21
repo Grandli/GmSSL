@@ -10,63 +10,64 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdlib.h>
+#include <sys/time.h>
 #include <gmssl/sm4.h>
 #include <gmssl/rand.h>
+#include "demo_util.h"
 
+
+#define OneTimeTestAmount  10*1024
+
+unsigned int DoSm4Test()
+{
+    SM4_KEY sm4_key;
+    unsigned char key[16];
+    unsigned char iv[16];
+    //明文数据
+    unsigned char message[OneTimeTestAmount]="goodluck";
+    unsigned int messageLen = OneTimeTestAmount;
+    //密文数据
+    unsigned char cipherData[OneTimeTestAmount+16];
+    unsigned int cipherLen = OneTimeTestAmount+16;
+    //解密后的数据
+    unsigned char outData[OneTimeTestAmount+16];
+    unsigned int outLen = OneTimeTestAmount+16;
+    int i;
+
+    rand_bytes(key, sizeof(key));
+    rand_bytes(iv, sizeof(iv));
+
+
+    sm4_set_encrypt_key(&sm4_key, key);
+    sm4_cbc_encrypt(&sm4_key, iv, message, messageLen/SM4_BLOCK_SIZE, cipherData);
+
+
+    sm4_set_decrypt_key(&sm4_key, key);
+    sm4_cbc_decrypt(&sm4_key, iv, cipherData, messageLen/SM4_BLOCK_SIZE, outData);
+
+    return OneTimeTestAmount;
+}
 
 int main(void)
 {
-	SM4_KEY sm4_key;
-	unsigned char key[16];
-	unsigned char iv[16];
-	unsigned char mbuf[32] = {
-		0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,
-		0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,
-		0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,
-		0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,
-	};
-	unsigned char cbuf[32] = {0};
-	unsigned char pbuf[32] = {0};
-	int i;
-
-	rand_bytes(key, sizeof(key));
-	rand_bytes(iv, sizeof(iv));
-
-	printf("key: ");
-	for (i = 0; i < sizeof(key); i++) {
-		printf("%02X", key[i]);
-	}
-	printf("\n");
-
-	printf("iv: ");
-	for (i = 0; i < sizeof(iv); i++) {
-		printf("%02X", iv[i]);
-	}
-	printf("\n");
-
-	printf("plaintext: ");
-	for (i = 0; i < sizeof(mbuf); i++) {
-		printf("%02X", mbuf[i]);
-	}
-	printf("\n");
-
-	sm4_set_encrypt_key(&sm4_key, key);
-	sm4_cbc_encrypt(&sm4_key, iv, mbuf, sizeof(mbuf)/SM4_BLOCK_SIZE, cbuf);
-
-	printf("ciphertext: ");
-	for (i = 0; i < sizeof(cbuf); i++) {
-		printf("%02X", cbuf[i]);
-	}
-	printf("\n");
-
-	sm4_set_decrypt_key(&sm4_key, key);
-	sm4_cbc_decrypt(&sm4_key, iv, cbuf, sizeof(cbuf)/SM4_BLOCK_SIZE, pbuf);
-
-	printf("decrypted: ");
-	for (i = 0; i < sizeof(pbuf); i++) {
-		printf("%02X", pbuf[i]);
-	}
-	printf("\n");
+//    unsigned long long haveTestAmount = 0;
+//    unsigned int tmpAmount = 0;
+//    unsigned int testTimes = 0;
+//    char amountStr[100]="";
+//
+//    unsigned long currentTime = getCurrentTime();
+//
+//    while(1){
+//        if(getCurrentTime()>=currentTime+10000)
+//            break;
+//        tmpAmount = DoSm4Test();
+//        haveTestAmount += tmpAmount;
+//        testTimes++;
+//    }
+//    getPrintSize(amountStr, haveTestAmount);
+//    printf("haveCostTime = %ld ms, testTimes = %d,  testAmount = %s\n",getCurrentTime()-currentTime, testTimes, amountStr);
+    demoDoUtilTest(DoSm4Test, 10, "sm4_cbc");
 
 	return 0;
 }

@@ -22,6 +22,7 @@ typedef struct {
 	char *display_name;
 } DIGEST_TABLE;
 
+//哈希运算表
 DIGEST_TABLE digest_table[] = {
 	{ OID_sm3, "sm3", "SM3" },
 #ifdef ENABLE_BROKEN_CRYPTO
@@ -44,7 +45,7 @@ const char *digest_name(const DIGEST *digest)
 	}
 	return NULL;
 }
-
+//哈希的初始化
 int digest_init(DIGEST_CTX *ctx, const DIGEST *algor)
 {
 	memset(ctx, 0, sizeof(DIGEST_CTX));
@@ -147,6 +148,7 @@ static int sm3_digest_finish(DIGEST_CTX *ctx, uint8_t *dgst)
 	return 1;
 }
 
+//sm3的哈希运算基础结构
 static const DIGEST sm3_digest_object = {
 	OID_sm3,
 	SM3_DIGEST_SIZE,

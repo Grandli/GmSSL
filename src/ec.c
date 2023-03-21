@@ -28,7 +28,7 @@ static uint32_t oid_secp256k1[] = { oid_secg_curve,10 };
 static uint32_t oid_secp384r1[] = { oid_secg_curve,34 }; // NIST P-384
 static uint32_t oid_secp521r1[] = { oid_secg_curve,35 }; // NIST P-521
 
-
+//椭圆曲线分类
 static const ASN1_OID_INFO ec_named_curves[] = {
 	{ OID_sm2, "sm2p256v1", oid_sm2, sizeof(oid_sm2)/sizeof(int), 0, "SM2" },
 	{ OID_prime192v1, "prime192v1", oid_prime192v1, sizeof(oid_prime192v1)/sizeof(int), 0, },

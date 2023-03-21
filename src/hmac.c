@@ -16,7 +16,7 @@
 #define IPAD	0x36
 #define OPAD	0x5C
 
-
+//hmac初始化
 int hmac_init(HMAC_CTX *ctx, const DIGEST *digest, const uint8_t *key, size_t keylen)
 {
 	uint8_t i_key[DIGEST_MAX_BLOCK_SIZE] = {0};
@@ -56,7 +56,7 @@ int hmac_init(HMAC_CTX *ctx, const DIGEST *digest, const uint8_t *key, size_t ke
 	memset(o_key, 0, sizeof(o_key));
 	return 1;
 }
-
+//hmac更新数据
 int hmac_update(HMAC_CTX *ctx, const uint8_t *data, size_t datalen)
 {
 	if (ctx == NULL) {
@@ -72,7 +72,7 @@ int hmac_update(HMAC_CTX *ctx, const uint8_t *data, size_t datalen)
 	}
 	return 1;
 }
-
+//完成hmac运算，返回mac信息
 int hmac_finish(HMAC_CTX *ctx, uint8_t *mac, size_t *maclen)
 {
 	if (ctx == NULL || maclen == NULL) {
@@ -91,7 +91,7 @@ int hmac_finish(HMAC_CTX *ctx, uint8_t *mac, size_t *maclen)
 	}
 	return 1;
 }
-
+//结束hmac运算，并对结果进行校验
 int hmac_finish_and_verify(HMAC_CTX *ctx, const uint8_t *mac, size_t maclen)
 {
 	uint8_t hmac[64];
@@ -108,7 +108,7 @@ int hmac_finish_and_verify(HMAC_CTX *ctx, const uint8_t *mac, size_t maclen)
 	}
 	return 1;
 }
-
+//单一接口的hmac运算
 int hmac(const DIGEST *digest, const uint8_t *key, size_t keylen,
 	const uint8_t *data, size_t datalen,
 	uint8_t *mac, size_t *maclen)

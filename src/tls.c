@@ -273,24 +273,27 @@ int tls_cbc_encrypt(const SM3_HMAC_CTX *inited_hmac_ctx, const SM4_KEY *enc_key,
 	uint8_t *mac, *padding, *iv;
 	int rem, padding_len;
 	int i;
-
+    //判断变量是否合法
 	if (!inited_hmac_ctx || !enc_key || !seq_num || !header || (!in && inlen) || !out || !outlen) {
 		error_print();
 		return -1;
 	}
+    //判断数据是否过大
 	if (inlen > (1 << 14)) {
 		error_print_msg("invalid tls record data length %zu\n", inlen);
 		return -1;
 	}
+    //头的最后两位是否为输入长度
 	if ((((size_t)header[3]) << 8) + header[4] != inlen) {
 		error_print();
 		return -1;
 	}
-
+    //次数运算+32是没有意义的################
 	rem = (inlen + 32) % 16;
 	memcpy(last_blocks, in + inlen - rem, rem);
 	mac = last_blocks + rem;
 
+    //计算hmac
 	memcpy(&hmac_ctx, inited_hmac_ctx, sizeof(SM3_HMAC_CTX));
 	sm3_hmac_update(&hmac_ctx, seq_num, 8);
 	sm3_hmac_update(&hmac_ctx, header, 5);
@@ -304,12 +307,14 @@ int tls_cbc_encrypt(const SM3_HMAC_CTX *inited_hmac_ctx, const SM4_KEY *enc_key,
 	}
 
 	iv = out;
+    //产生iv的随机数(作为out的前16位）
 	if (rand_bytes(iv, 16) != 1) {
 		error_print();
 		return -1;
 	}
 	out += 16;
 
+    //加密处理
 	if (inlen >= 16) {
 		sm4_cbc_encrypt(enc_key, iv, in, inlen/16, out);
 		out += inlen - rem;
@@ -2218,7 +2223,7 @@ end:
 	if (kenckeyfp) fclose(kenckeyfp);
 	return ret;
 }
-
+//tls的初始化
 int tls_init(TLS_CONNECT *conn, const TLS_CTX *ctx)
 {
 	size_t i;

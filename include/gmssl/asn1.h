@@ -37,10 +37,10 @@ extern "C" {
 
 
 enum ASN1_TAG {
-	ASN1_TAG_BOOLEAN		= 1,
-	ASN1_TAG_INTEGER		= 2,
-	ASN1_TAG_BIT_STRING		= 3,
-	ASN1_TAG_OCTET_STRING		= 4,
+	ASN1_TAG_BOOLEAN		= 1,//布尔型
+	ASN1_TAG_INTEGER		= 2,//整型
+	ASN1_TAG_BIT_STRING		= 3,//bit字符串（第一位会指定没有用到的bit位数）
+	ASN1_TAG_OCTET_STRING		= 4,//octet字符串，常用的字符串使用方式，每8个bit表示一个字符
 	ASN1_TAG_NULL			= 5,
 	ASN1_TAG_OBJECT_IDENTIFIER	= 6,
 	ASN1_TAG_ObjectDescriptor	= 7,

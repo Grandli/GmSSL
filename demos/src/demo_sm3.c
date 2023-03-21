@@ -12,25 +12,28 @@
 #include <string.h>
 #include <stdlib.h>
 #include <gmssl/sm3.h>
+#include "demo_util.h"
 
+#define OneTimeTestAmount  100*1024
+
+unsigned int doSm3Test()
+{
+    SM3_CTX sm3_ctx;
+    uint8_t buf[OneTimeTestAmount] = "chinese standard message";
+    size_t len = OneTimeTestAmount;
+    uint8_t dgst[32];
+
+    sm3_init(&sm3_ctx);
+    sm3_update(&sm3_ctx, buf, len);
+    sm3_finish(&sm3_ctx, dgst);
+
+    return OneTimeTestAmount;
+}
 
 int main(int argc, char **argv)
 {
-	SM3_CTX sm3_ctx;
-	uint8_t buf[4096];
-	size_t len;
-	uint8_t dgst[32];
-	int i;
 
-	sm3_init(&sm3_ctx);
-	while ((len = fread(buf, 1, sizeof(buf), stdin)) > 0) {
-		sm3_update(&sm3_ctx, buf, len);
-	}
-	sm3_finish(&sm3_ctx, dgst);
+    demoDoUtilTest(doSm3Test, 10, "sm3");
 
-	for (i = 0; i < sizeof(dgst); i++) {
-		printf("%02x", dgst[i]);
-	}
-	printf("\n");
 	return 0;
 }

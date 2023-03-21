@@ -442,9 +442,10 @@ SM9Signature ::= SEQUENCE {
 	h	OCTET STRING,
 	S	BIT STRING -- uncompressed octets of ECPoint }
 */
+//SM9签名数据中的
 typedef struct {
-	sm9_fn_t h;
-	SM9_POINT S;
+	sm9_fn_t h;//h = H2(M||w,N)
+	SM9_POINT S;//
 } SM9_SIGNATURE;
 
 int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *sig);

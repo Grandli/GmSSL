@@ -24,7 +24,7 @@ extern const sm9_bn_t SM9_N;
 extern const SM9_POINT *SM9_P1;
 extern const SM9_TWIST_POINT *SM9_P2;
 
-
+//把sm9的签名数据进行der编码
 int sm9_signature_to_der(const SM9_SIGNATURE *sig, uint8_t **out, size_t *outlen)
 {
 	uint8_t hbuf[32];
@@ -246,10 +246,24 @@ int sm9_do_verify(const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen,
 	return 1;
 }
 
+//static const char gHexData[1024] = "3796f1f15d130464d27163fb01d7018dfb2704d0261f7899ab6b8eed93adab38\n"
+//                                   "15a1863c91be234b6795b5b13f7f6e2156df8d3bc53866992dec7875b3d3ea61\n"
+//                                   "30efa0d4baefefd5326db34e90c72b001e4194e9326dbf190f6f4818f08a068e\n"
+//                                   "5e387f424631303b30e510fb1251c902239ecd4a23a00635108b05354f9fef73\n"
+//                                   "282499cf2968150101e04333c2b3c192b4a9c2f25cff9895cda200014069fe30\n"
+//                                   "35805a415ddd74353a42ca3cd2a867c75d32643609ee34c051ddb610d5237c24\n"
+//                                   "a6bc6b8c54c8a8455a97c742c9ab7e5800c38002c585a7dd52f87b099e60134f\n"
+//                                   "3c4cbdcb64afb12d4cd69aa6c550bd87ba19ea3405a2ac19023544d5cc446f17\n"
+//                                   "342d38832f92c39e5082cb59afd5456375240e623ddaa615361a74f65bf7ec62\n"
+//                                   "835b9c1daa663f04c523f882c032e1d47484aa429f8a3012ec9e4eb2d9f31eda\n"
+//                                   "a2b5e2aff8df4265b9c7f742f05a1a4b4f85237f0d91ee96f9646f33b01096b0\n"
+//                                   "a7ee7315a291abd89facb618de51824497aab6bdd47ca0b2c62e1a7a130cc926";
+
 int sm9_kem_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	size_t klen, uint8_t *kbuf, SM9_POINT *C)
 {
 	sm9_fn_t r;
+	sm9_fp12_t g;
 	sm9_fp12_t w;
 	uint8_t wbuf[32 * 12];
 	uint8_t cbuf[65];
@@ -260,6 +274,27 @@ int sm9_kem_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	sm9_point_mul(C, r, SM9_P1);
 	sm9_point_add(C, C, &mpk->Ppube);
 
+    //uint8_t tempBuf[65]={0x04,0x12,0xB3,0x4B,0x71,0x22,0x2A,0x25,0xC8,0x0A,0xE1,0x29,0x75,0xDF,0x2D,0x34,0xD9,0x2D,0xD1,0x25,0x5A,0x2E,0xC5,0x74,0xE5,0xF6,0x13,0x5B,0x4E,0xA7,0x3F,0xA4,
+    //           0xD4,0x08,0x47,0x3B,0x79,0xD1,0x04,0xD6,0x0E,0xBE,0xBC,0xB3,0x84,0xB0,0x8B,0x92,0x6D,0xA5,0xBC,0xEE,0x9A,0xB2,0x60,0x0E,0xAD,0x09,0x36,0x0D,0xA7,0x31,0x2F,0xCB,
+    //           0x9E};
+    //sm9_point_to_uncompressed_octets(C, tempBuf);
+    //printf("Q = \n");
+    //print_bytes(tempBuf, 65);
+
+    //sm9_point_from_uncompressed_octets(C, tempBuf);
+
+    //sm9双线性对运算
+    //    sm9_pairing(g, SM9_P2, &mpk->Ppube);
+    //    char tempBuf[1024]="";
+    //    sm9_fp12_to_hex(g, tempBuf);
+    //    printf("g = %s\n", tempBuf);
+    //    char tempBuf[1024]="";
+    //    sm9_fp12_to_hex(g, tempBuf);
+    //    printf("g = %s\n", tempBuf);
+
+    //    sm9_fp12_from_hex(g, gHexData);
+
+
 	do {
 		// A2: rand r in [1, N-1]
 		if (sm9_fn_rand(r) != 1) {
@@ -269,10 +304,13 @@ int sm9_kem_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 
 		// A3: C1 = r * Q
 		sm9_point_mul(C, r, C);
+        //把C1转为字符串
 		sm9_point_to_uncompressed_octets(C, cbuf);
 
 		// A4: g = e(Ppube, P2)
 		sm9_pairing(w, SM9_P2, &mpk->Ppube);
+        //把g赋值给w
+        //sm9_fp12_copy(w, g);
 
 		// A5: w = g^r
 		sm9_fp12_pow(w, w, r);
@@ -336,10 +374,14 @@ int sm9_do_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	SM9_POINT *C1, uint8_t *c2, uint8_t c3[SM3_HMAC_SIZE])
 {
 	SM3_HMAC_CTX hmac_ctx;
-	uint8_t K[SM9_MAX_PLAINTEXT_SIZE + 32];
+	//uint8_t K[SM9_MAX_PLAINTEXT_SIZE + 32];
+    uint8_t *K = (uint8_t *)malloc(inlen+32);
 
+
+    //密钥封装运算得到密钥
 	if (sm9_kem_encrypt(mpk, id, idlen, sizeof(K), K, C1) != 1) {
 		error_print();
+        free(K);
 		return -1;
 	}
 	gmssl_memxor(c2, K, in, inlen);
@@ -349,6 +391,7 @@ int sm9_do_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	sm3_hmac_update(&hmac_ctx, c2, inlen);
 	sm3_hmac_finish(&hmac_ctx, c3);
 	gmssl_secure_clear(&hmac_ctx, sizeof(hmac_ctx));
+    free(K);
 	return 1;
 }
 
@@ -357,29 +400,33 @@ int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	uint8_t *out)
 {
 	SM3_HMAC_CTX hmac_ctx;
-	uint8_t k[SM9_MAX_PLAINTEXT_SIZE + SM3_HMAC_SIZE];
+	//uint8_t k[SM9_MAX_PLAINTEXT_SIZE + SM3_HMAC_SIZE];
 	uint8_t mac[SM3_HMAC_SIZE];
+    uint8_t *K = (uint8_t *)malloc(c2len+32);
 
-	if (c2len > SM9_MAX_PLAINTEXT_SIZE) {
-		error_print();
-		return -1;
-	}
+//	if (c2len > SM9_MAX_PLAINTEXT_SIZE) {
+//		error_print();
+//		return -1;
+//	}
 
-	if (sm9_kem_decrypt(key, id, idlen, C1, sizeof(k), k) != 1) {
+	if (sm9_kem_decrypt(key, id, idlen, C1, sizeof(K), K) != 1) {
+        free(K);
 		error_print();
 		return -1;
 	}
 	//sm3_hmac(k + c2len, SM3_HMAC_SIZE, c2, c2len, mac);
-	sm3_hmac_init(&hmac_ctx, k + c2len, SM3_HMAC_SIZE);
+	sm3_hmac_init(&hmac_ctx, K + c2len, SM3_HMAC_SIZE);
 	sm3_hmac_update(&hmac_ctx, c2, c2len);
 	sm3_hmac_finish(&hmac_ctx, mac);
 	gmssl_secure_clear(&hmac_ctx, sizeof(hmac_ctx));
 
 	if (gmssl_secure_memcmp(c3, mac, sizeof(mac)) != 0) {
 		error_print();
+        free(K);
 		return -1;
 	}
-	gmssl_memxor(out, k, c2, c2len);
+	gmssl_memxor(out, K, c2, c2len);
+    free(K);
 	return 1;
 }
 
@@ -469,23 +516,27 @@ int sm9_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen)
 {
 	SM9_POINT C1;
-	uint8_t c2[SM9_MAX_PLAINTEXT_SIZE];
+	uint8_t *c2;//[SM9_MAX_PLAINTEXT_SIZE];
 	uint8_t c3[SM3_HMAC_SIZE];
 
-	if (inlen > SM9_MAX_PLAINTEXT_SIZE) {
-		error_print();
-		return -1;
-	}
+//	if (inlen > SM9_MAX_PLAINTEXT_SIZE) {
+//		error_print();
+//		return -1;
+//	}
+    c2 = (uint8_t *)malloc(inlen+SM3_HMAC_SIZE);
 
 	if (sm9_do_encrypt(mpk, id, idlen, in, inlen, &C1, c2, c3) != 1) {
+        free(c2);
 		error_print();
 		return -1;
 	}
 	*outlen = 0;
-	if (sm9_ciphertext_to_der(&C1, c2, inlen, c3, &out, outlen) != 1) { // FIXME: when out == NULL	
+	if (sm9_ciphertext_to_der(&C1, c2, inlen, c3, &out, outlen) != 1) { // FIXME: when out == NULL
+        free(c2);
 		error_print();
 		return -1;
 	}
+    free(c2);
 	return 1;
 }
 

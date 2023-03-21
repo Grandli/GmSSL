@@ -25,7 +25,7 @@
 
 extern const SM2_BN SM2_N;
 
-
+//随机生成sm2密钥对
 int sm2_key_generate(SM2_KEY *key)
 {
 	SM2_BN x;
@@ -53,7 +53,7 @@ int sm2_key_generate(SM2_KEY *key)
 
 	return 1;
 }
-
+//给sm2密钥对象设置私钥数据
 int sm2_key_set_private_key(SM2_KEY *key, const uint8_t private_key[32])
 {
 	SM2_BN bn;
@@ -79,7 +79,7 @@ int sm2_key_set_private_key(SM2_KEY *key, const uint8_t private_key[32])
 	gmssl_secure_clear(bn, sizeof(bn));
 	return 1;
 }
-
+//给sm2密钥对象设置公钥数据
 int sm2_key_set_public_key(SM2_KEY *key, const SM2_POINT *public_key)
 {
 	if (!key || !public_key) {
@@ -94,7 +94,7 @@ int sm2_key_set_public_key(SM2_KEY *key, const SM2_POINT *public_key)
 	key->public_key = *public_key;
 	return 1;
 }
-
+//打印输出sm2密钥数据
 int sm2_key_print(FILE *fp, int fmt, int ind, const char *label, const SM2_KEY *key)
 {
 	format_print(fp, fmt, ind, "%s\n", label);
@@ -103,7 +103,7 @@ int sm2_key_print(FILE *fp, int fmt, int ind, const char *label, const SM2_KEY *
 	format_bytes(fp, fmt, ind, "privateKey", key->private_key, 32);
 	return 1;
 }
-
+//把sm2公钥转为der编码格式
 int sm2_public_key_to_der(const SM2_KEY *key, uint8_t **out, size_t *outlen)
 {
 	uint8_t buf[65];
@@ -119,7 +119,7 @@ int sm2_public_key_to_der(const SM2_KEY *key, uint8_t **out, size_t *outlen)
 	}
 	return 1;
 }
-
+//把der编码的公钥数据转为sm2密钥对象的公钥
 int sm2_public_key_from_der(SM2_KEY *key, const uint8_t **in, size_t *inlen)
 {
 	int ret;
@@ -179,6 +179,7 @@ int sm2_public_key_algor_from_der(const uint8_t **in, size_t *inlen)
 }
 
 #define SM2_PRIVATE_KEY_DER_SIZE 121
+//把私钥数据转为der编码格式
 int sm2_private_key_to_der(const SM2_KEY *key, uint8_t **out, size_t *outlen)
 {
 	size_t len = 0;
@@ -212,7 +213,7 @@ int sm2_private_key_to_der(const SM2_KEY *key, uint8_t **out, size_t *outlen)
 	}
 	return 1;
 }
-
+//把der编码的私钥数据转为sm2对象的私钥
 int sm2_private_key_from_der(SM2_KEY *key, const uint8_t **in, size_t *inlen)
 {
 	int ret;
@@ -539,7 +540,7 @@ int sm2_public_key_digest(const SM2_KEY *sm2_key, uint8_t dgst[32])
 	sm3_digest(bits, sizeof(bits), dgst);
 	return 1;
 }
-
+//把sm2密钥的私钥数据转为带口令保护的der编码的私钥数据
 int sm2_private_key_info_encrypt_to_der(const SM2_KEY *sm2_key, const char *pass,
 	uint8_t **out, size_t *outlen)
 {
@@ -592,7 +593,7 @@ end:
 	gmssl_secure_clear(&sm4_key, sizeof(sm4_key));
 	return ret;
 }
-
+//把带口令保护的der编码的私钥数据转为sm2密钥的私钥数据
 int sm2_private_key_info_decrypt_from_der(SM2_KEY *sm2,
 	const uint8_t **attrs, size_t *attrs_len,
 	const char *pass, const uint8_t **in, size_t *inlen)
@@ -647,7 +648,7 @@ end:
 	gmssl_secure_clear(pkey_info, sizeof(pkey_info));
 	return ret;
 }
-
+//把sm2密钥的私钥数据转为带口令保护的der编码的pem私钥文件
 int sm2_private_key_info_encrypt_to_pem(const SM2_KEY *sm2_key, const char *pass, FILE *fp)
 {
 	uint8_t buf[1024];
@@ -668,7 +669,7 @@ int sm2_private_key_info_encrypt_to_pem(const SM2_KEY *sm2_key, const char *pass
 	}
 	return 1;
 }
-
+//把带口令保护的der编码的pem私钥文件转为sm2密钥的私钥数据
 int sm2_private_key_info_decrypt_from_pem(SM2_KEY *key, const char *pass, FILE *fp)
 {
 	uint8_t buf[512];

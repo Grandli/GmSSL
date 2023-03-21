@@ -109,7 +109,7 @@ int tls_socket_lib_cleanup(void)
 {
 	return 1;
 }
-
+//创建socket对象
 int tls_socket_create(tls_socket_t *sock, int af, int type, int protocol)
 {
 	if (!sock) {
@@ -124,6 +124,7 @@ int tls_socket_create(tls_socket_t *sock, int af, int type, int protocol)
 	return 1;
 }
 
+//进行socket的连接
 int tls_socket_connect(tls_socket_t sock, const struct sockaddr_in *addr)
 {
 	socklen_t addr_len = sizeof(struct sockaddr_in);
@@ -134,7 +135,7 @@ int tls_socket_connect(tls_socket_t sock, const struct sockaddr_in *addr)
 	}
 	return 1;
 }
-
+//绑定监听端口
 int tls_socket_bind(tls_socket_t sock, const struct sockaddr_in *addr)
 {
 	socklen_t addr_len = (socklen_t)sizeof(struct sockaddr_in);
@@ -145,7 +146,7 @@ int tls_socket_bind(tls_socket_t sock, const struct sockaddr_in *addr)
 	}
 	return 1;
 }
-
+//开始socket监听
 int tls_socket_listen(tls_socket_t sock, int backlog)
 {
 	if (listen(sock, backlog) == -1) {
@@ -155,7 +156,7 @@ int tls_socket_listen(tls_socket_t sock, int backlog)
 	}
 	return 1;
 }
-
+//接受socket连接
 int tls_socket_accept(tls_socket_t sock, struct sockaddr_in *addr, tls_socket_t *conn_sock)
 {
 	socklen_t addr_len = (socklen_t)sizeof(struct sockaddr_in);

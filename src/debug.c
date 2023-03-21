@@ -26,7 +26,7 @@ void print_bytes(const uint8_t *data, size_t datalen)
 {
 	size_t i;
 	for (i = 0; i < datalen; i++) {
-		printf("%02X ", data[i]);
+		printf("0x%02X,", data[i]);
 		if ((i + 1) % 32 == 0)
 			printf("\n");
 	}

@@ -39,7 +39,7 @@ int rdseed_bytes(uint8_t *buf, size_t buflen)
 
 	while (buflen) {
 		size_t len = buflen >= sizeof(val) ? sizeof(val) : buflen;
-		if (_rdseed64_step(&val) != 1) {
+		if (_rdrand64_step(&val) != 1) {
 			error_print();
 			return -1;
 		}

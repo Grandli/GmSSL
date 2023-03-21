@@ -126,6 +126,8 @@ int tlcp_server_key_exchange_pke_print(FILE *fp, const uint8_t *data, size_t dat
 	return 1;
 }
 
+//需要先进行tls相关的初始化等
+//tlcp的连接
 int tlcp_do_connect(TLS_CONNECT *conn)
 {
 	int ret = -1;

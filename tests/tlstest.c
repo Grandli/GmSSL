@@ -326,7 +326,11 @@ static int test_tls_application_data(void)
 int main(void)
 {
 	if (test_tls_encode() != 1) goto err;
-	if (test_tls_cbc() != 1) goto err;
+    for(int i=0;i<10;i++)
+    {
+        if (test_tls_cbc() != 1) goto err;
+    }
+
 	if (test_tls_random() != 1) goto err;
 	if (test_tls_client_hello() != 1) goto err;
 	if (test_tls_server_hello() != 1) goto err;

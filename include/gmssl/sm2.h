@@ -58,6 +58,7 @@ SM2 Public API
 	sm2_verify_finish
 */
 
+//表示8个64位的数据类型
 typedef uint64_t SM2_BN[8];
 
 int sm2_bn_is_zero(const SM2_BN a);

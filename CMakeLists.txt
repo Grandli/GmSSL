@@ -235,7 +235,7 @@ endif()
 
 option(ENABLE_SM2_EXTS "Enable SM2 Extensions" OFF)
 if (ENABLE_SM2_EXTS)
-	message(STATUS "ENABLE_SM4_AESNI_AVX")
+	message(STATUS "ENABLE_SM2_EXTS")
 	list(APPEND src
 		src/sm2_key_share.c
 		src/sm2_recover.c
@@ -259,11 +259,11 @@ option(ENABLE_RDRND "Enable Intel RDRND instructions" OFF)
 if (${CMAKE_SYSTEM_PROCESSOR} MATCHES x86_64)
 	set(ENABLE_RDRND ON)
 endif()
-if (ENABLE_RDRND)
-	message(STATUS "ENABLE_RDRND")
-	list(APPEND src src/rdrand.c)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mrdrnd -mrdseed")
-endif()
+#if (ENABLE_RDRND)
+#	message(STATUS "ENABLE_RDRND")
+#	list(APPEND src src/rdrand.c)
+#	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mrdrnd -mrdseed")
+#endif()
 
 option(ENABLE_GMT_0105_RNG "Enable GM/T 0105 Software RNG" OFF)
 if (ENABLE_GMT_0105_RNG)
@@ -341,7 +341,7 @@ if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "iOS")
 	endforeach()
 
 	foreach(name ${demos})
-		add_executable(${name} demos/src/${name}.c)
+		add_executable(${name} demos/src/${name}.c demos/src/demo_util.c)
 		target_link_libraries(${name} LINK_PUBLIC gmssl)
 	endforeach()
 

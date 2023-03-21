@@ -21,6 +21,7 @@
 #include <gmssl/rand.h>
 
 
+//部分常量的定义
 const sm9_bn_t SM9_ZERO = {0,0,0,0,0,0,0,0};
 const sm9_bn_t SM9_ONE = {1,0,0,0,0,0,0,0};
 static const sm9_bn_t SM9_TWO = {2,0,0,0,0,0,0,0};
@@ -31,12 +32,21 @@ static const sm9_bn_t SM9_FIVE = {5,0,0,0,0,0,0,0};
 // n =  b640000002a3a6f1d603ab4ff58ec74449f2934b18ea8beee56ee19cd69ecf25
 // mu_p = 2^512 // p = 167980e0beb5759a655f73aebdcd1312af2665f6d1e36081c71188f90d5c22146
 // mu_n = 2^512 // n
+
+//SM9国密标准的曲线的常量的相关定义
+//
 const sm9_bn_t SM9_P = {0xe351457d, 0xe56f9b27, 0x1a7aeedb, 0x21f2934b, 0xf58ec745, 0xd603ab4f, 0x02a3a6f1, 0xb6400000};
+//
 const sm9_bn_t SM9_N = {0xd69ecf25, 0xe56ee19c, 0x18ea8bee, 0x49f2934b, 0xf58ec744, 0xd603ab4f, 0x02a3a6f1, 0xb6400000};
+//P-1
 static const sm9_bn_t SM9_P_MINUS_ONE = {0xe351457c, 0xe56f9b27, 0x1a7aeedb, 0x21f2934b, 0xf58ec745, 0xd603ab4f, 0x02a3a6f1, 0xb6400000};
+//N-1
 static const sm9_bn_t SM9_N_MINUS_ONE = {0xd69ecf24, 0xe56ee19c, 0x18ea8bee, 0x49f2934b, 0xf58ec744, 0xd603ab4f, 0x02a3a6f1, 0xb6400000};
+//
 static const sm9_barrett_bn_t SM9_MU_P = {0xd5c22146, 0x71188f90, 0x1e36081c, 0xf2665f6d, 0xdcd1312a, 0x55f73aeb, 0xeb5759a6, 0x67980e0b, 0x00000001};
+//
 static const sm9_barrett_bn_t SM9_MU_N = {0xdfc97c2f, 0x74df4fd4, 0xc9c073b0, 0x9c95d85e, 0xdcd1312c, 0x55f73aeb, 0xeb5759a6, 0x67980e0b, 0x00000001};
+//
 static const sm9_barrett_bn_t SM9_MU_N_MINUS_ONE = {0xdfc97c31, 0x74df4fd4, 0xc9c073b0, 0x9c95d85e, 0xdcd1312c, 0x55f73aeb, 0xeb5759a6, 0x67980e0b, 0x00000001};
 
 
@@ -470,10 +480,14 @@ int sm9_fp_from_hex(sm9_fp_t r, const char hex[64])
 	return 1;
 }
 
-
+//点的常量
+//x,y都为0
 const sm9_fp2_t SM9_FP2_ZERO = {{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0}};
+//x=1，y=0
 const sm9_fp2_t SM9_FP2_ONE = {{1,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0}};
+//x=0, y=1
 const sm9_fp2_t SM9_FP2_U = {{0,0,0,0,0,0,0,0},{1,0,0,0,0,0,0,0}};
+//x=0, y=5
 static const sm9_fp2_t SM9_FP2_5U = {{0,0,0,0,0,0,0,0},{5,0,0,0,0,0,0,0}};
 
 int sm9_fp2_equ(const sm9_fp2_t a, const sm9_fp2_t b)
@@ -2322,6 +2336,7 @@ int sm9_fn_from_bytes(sm9_fn_t a, const uint8_t in[32])
 	return 1;
 }
 
+//把SM9的点转为8位制的字符串
 int sm9_point_to_uncompressed_octets(const SM9_POINT *P, uint8_t octets[65])
 {
 	sm9_fp_t x;
@@ -2333,6 +2348,7 @@ int sm9_point_to_uncompressed_octets(const SM9_POINT *P, uint8_t octets[65])
 	return 1;
 }
 
+//8位制的字符串转为SM9的点
 int sm9_point_from_uncompressed_octets(SM9_POINT *P, const uint8_t octets[65])
 {
 	if (octets[0] != 0x04) {
@@ -2343,6 +2359,7 @@ int sm9_point_from_uncompressed_octets(SM9_POINT *P, const uint8_t octets[65])
 	sm9_bn_from_bytes(P->X, octets + 1);
 	sm9_bn_from_bytes(P->Y, octets + 32 + 1);
 	sm9_fp_set_one(P->Z);
+    //验证点是否是在曲线上
 	if (!sm9_point_is_on_curve(P)) {
 		error_print();
 		return -1;

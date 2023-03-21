@@ -35,7 +35,7 @@ typedef struct DIGEST_CTX DIGEST_CTX;
 #define DIGEST_MAX_SIZE		64
 #define DIGEST_MAX_BLOCK_SIZE (1024/8)
 
-
+//哈希运算的上下文结构
 struct DIGEST_CTX {
 	union {
 		SM3_CTX sm3_ctx;
@@ -51,6 +51,7 @@ struct DIGEST_CTX {
 	const DIGEST *digest;
 };
 
+//哈希运算的基础结构
 struct DIGEST {
 	int oid;
 	size_t digest_size;

@@ -26,6 +26,7 @@
 extern const sm9_bn_t SM9_ZERO;
 extern const sm9_bn_t SM9_N;
 
+//用于生成用户密钥的h1的计算
 // generate h1 in [1, n-1]
 int sm9_hash1(sm9_bn_t h1, const char *id, size_t idlen, uint8_t hid)
 {
@@ -49,6 +50,7 @@ int sm9_hash1(sm9_bn_t h1, const char *id, size_t idlen, uint8_t hid)
 	sm3_update(&ctx, ct2, sizeof(ct2));
 	sm3_finish(&ctx, Ha + 32);
 
+    //把hash值转为大数(取Ha的前40个字节）
 	sm9_fn_from_hash(h1, Ha);
 	return 1;
 }
@@ -366,11 +368,16 @@ int sm9_sign_master_key_generate(SM9_SIGN_MASTER_KEY *msk)
 
 int sm9_enc_master_key_generate(SM9_ENC_MASTER_KEY *msk)
 {
+//    const char masterKeyData[1024] = "6a122e15c5957899e0845aec401dcf37ec02078ed3e3f29fddabcbd42948d913";
+//    sm9_bn_from_hex(msk->ke, masterKeyData);
 	// k = rand(1, n-1)
 	if (sm9_fn_rand(msk->ke) != 1) {
 		error_print();
 		return -1;
 	}
+
+    //sm9_fn_to_hex(msk->ke, masterKeyData);
+    //printf("masterKeyData = %s\n", masterKeyData);
 	// Ppube = ke * P1 in E(F_p)
 	sm9_point_mul_generator(&msk->Ppube, msk->ke);
 	return 1;
