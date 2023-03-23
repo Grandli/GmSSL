@@ -175,6 +175,7 @@ void gmssl_memxor(void *r, const void *a, const void *b, size_t len)
  * pointers to volatile to not be emitted in some rare,
  * never needed in real life, pieces of code.
  */
+//如果长度过长，效率偏低
 int gmssl_secure_memcmp(const volatile void * volatile in_a, const volatile void * volatile in_b, size_t len)
 {
 	size_t i;
@@ -208,7 +209,11 @@ int mem_is_zero(const uint8_t *buf, size_t len)
 	int ret = 1;
 	size_t i;
 	for (i = 0; i < len; i++) {
-		if (buf[i]) ret = 0;
+		if (buf[i])
+        {
+            ret = 0;
+            break;
+        }
 	}
 	return ret;
 }

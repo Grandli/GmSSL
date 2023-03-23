@@ -21,7 +21,7 @@ static SM9_ENC_KEY key;
 
 
 
-
+//提前准备sm9测试
 void PrePareSM9Test()
 {
     uint8_t buf[512];
@@ -37,25 +37,35 @@ void PrePareSM9Test()
     sm9_enc_master_public_key_from_der(&master_public, &cp, &len);
 }
 
-#define OneTimeTestAmount  10*1024
+#define OneTimeTestAmount  5*1024
 unsigned int DoSm9Test() {
     const char *id = "Alice";
     //明文数据
     unsigned char message[OneTimeTestAmount]= "chinese standard message";
-    unsigned int messageLen = OneTimeTestAmount;
+    unsigned int messageLen = strlen(message);
     //密文数据
     unsigned char cipherData[OneTimeTestAmount+1024];
     unsigned int cipherLen = OneTimeTestAmount+1024;
     //解密后的数据
-    unsigned char outData[OneTimeTestAmount+1024];
+    unsigned char outData[OneTimeTestAmount+1024]="";
     unsigned int outLen = OneTimeTestAmount+1024;
     int ret;
-    sm9_encrypt(&master_public, id, strlen(id), message, messageLen, cipherData, &cipherLen);
+    ret = sm9_encrypt(&master_public, id, strlen(id), message, messageLen, cipherData, &cipherLen);
+    if (ret != 1) {
+        return 0;
+    }
+    printf("sm9_encrypt cipherLen = %d", cipherLen);
     ret = sm9_decrypt(&key, id, strlen(id), cipherData, cipherLen, (uint8_t *)outData, &outLen);
     if (ret != 1) {
         return 0;
     }
-    return OneTimeTestAmount;
+    //如果数据不一致
+    if(memcmp(outData, message, outLen)!=0)
+    {
+        printf("outData[%d] = %s\n", outLen, outData);
+        return 0;
+    }
+    return messageLen;
 }
 
 int main(void)

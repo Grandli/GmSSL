@@ -98,6 +98,7 @@ int sm9_sign_finish(SM9_SIGN_CTX *ctx, const SM9_SIGN_KEY *key, uint8_t *sig, si
 		return -1;
 	}
 	*siglen = 0;
+    //把签名数据转为der编码
 	if (sm9_signature_to_der(&signature, &sig, siglen) != 1) {
 		error_print();
 		return -1;
@@ -208,8 +209,18 @@ int sm9_do_verify(const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen,
 	uint8_t Ha[64];
 
 	// B1: check h in [1, N-1]
+//    if (sm9_bn_is_zero(sig->h) == 1
+//        || sm9_bn_cmp(sig->h, SM9_N) >= 0) {
+//        error_print();
+//        return -1;
+//    }
 
 	// B2: check S in G1
+//    if(!sm9_point_is_on_curve(&sig->S))
+//    {
+//        error_print();
+//        return -1;
+//    }
 
 	// B3: g = e(P1, Ppubs)
 	sm9_pairing(g, &mpk->Ppubs, SM9_P1);
@@ -375,11 +386,10 @@ int sm9_do_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 {
 	SM3_HMAC_CTX hmac_ctx;
 	//uint8_t K[SM9_MAX_PLAINTEXT_SIZE + 32];
-    uint8_t *K = (uint8_t *)malloc(inlen+32);
-
+    uint8_t *K = (uint8_t *)malloc(inlen+SM3_HMAC_SIZE);
 
     //密钥封装运算得到密钥
-	if (sm9_kem_encrypt(mpk, id, idlen, sizeof(K), K, C1) != 1) {
+	if (sm9_kem_encrypt(mpk, id, idlen, inlen+SM3_HMAC_SIZE, K, C1) != 1) {
 		error_print();
         free(K);
 		return -1;
@@ -387,7 +397,7 @@ int sm9_do_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	gmssl_memxor(c2, K, in, inlen);
 
 	//sm3_hmac(K + inlen, 32, c2, inlen, c3);
-	sm3_hmac_init(&hmac_ctx, K + inlen, SM3_HMAC_SIZE);
+	sm3_hmac_init(&hmac_ctx, K+inlen, SM3_HMAC_SIZE);
 	sm3_hmac_update(&hmac_ctx, c2, inlen);
 	sm3_hmac_finish(&hmac_ctx, c3);
 	gmssl_secure_clear(&hmac_ctx, sizeof(hmac_ctx));
@@ -400,16 +410,11 @@ int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	uint8_t *out)
 {
 	SM3_HMAC_CTX hmac_ctx;
-	//uint8_t k[SM9_MAX_PLAINTEXT_SIZE + SM3_HMAC_SIZE];
+	//uint8_t K[SM9_MAX_PLAINTEXT_SIZE + SM3_HMAC_SIZE];
 	uint8_t mac[SM3_HMAC_SIZE];
-    uint8_t *K = (uint8_t *)malloc(c2len+32);
+    uint8_t *K = (uint8_t *)malloc(c2len+SM3_HMAC_SIZE);
 
-//	if (c2len > SM9_MAX_PLAINTEXT_SIZE) {
-//		error_print();
-//		return -1;
-//	}
-
-	if (sm9_kem_decrypt(key, id, idlen, C1, sizeof(K), K) != 1) {
+	if (sm9_kem_decrypt(key, id, idlen, C1, c2len+SM3_HMAC_SIZE, K) != 1) {
         free(K);
 		error_print();
 		return -1;
@@ -426,6 +431,7 @@ int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 		return -1;
 	}
 	gmssl_memxor(out, K, c2, c2len);
+    printf("sm9_do_decrypt out[%d] = %s\n", c2len, out);
     free(K);
 	return 1;
 }
@@ -505,6 +511,7 @@ int sm9_ciphertext_from_der(SM9_POINT *C1, const uint8_t **c2, size_t *c2len,
 		error_print();
 		return -1;
 	}
+    //内部有验证点是否在SM9的椭圆曲线上
 	if (sm9_point_from_uncompressed_octets(C1, c1) != 1) {
 		error_print();
 		return -1;
@@ -554,6 +561,7 @@ int sm9_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 		return -1;
 	}
 	*outlen = c2len;
+    //printf("c2len = %d\n", c2len);
 	if (!out) {
 		return 1;
 	}

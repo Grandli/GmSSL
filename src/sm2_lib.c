@@ -647,6 +647,7 @@ int sm2_do_decrypt(const SM2_KEY *key, const SM2_CIPHERTEXT *in, uint8_t *out, s
 
 	// check C1 is on sm2 curve
 	sm2_jacobian_point_from_bytes(C1, (uint8_t *)&in->point);
+    //验证点是否在sm2椭圆曲线上
 	if (!sm2_jacobian_point_is_on_curve(C1)) {
 		error_print();
 		return -1;
@@ -756,6 +757,7 @@ int sm2_ciphertext_from_der(SM2_CIPHERTEXT *C, const uint8_t **in, size_t *inlen
 	memset(C, 0, sizeof(SM2_CIPHERTEXT));
 	memcpy(C->point.x + 32 - xlen, x, xlen);
 	memcpy(C->point.y + 32 - ylen, y, ylen);
+    //验证点是否再sm2的椭圆曲线上
 	if (sm2_point_is_on_curve(&C->point) != 1) {
 		error_print();
 		return -1;

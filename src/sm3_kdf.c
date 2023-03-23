@@ -14,7 +14,7 @@
 #include <gmssl/endian.h>
 #include <gmssl/error.h>
 
-//初始化上下文和设置要输出的长度
+//初始化上下文和设置要输出的长度(在开始就设置要求的长度）
 void sm3_kdf_init(SM3_KDF_CTX *ctx, size_t outlen)
 {
 	sm3_init(&ctx->sm3_ctx);
