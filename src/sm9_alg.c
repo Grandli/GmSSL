@@ -227,6 +227,7 @@ int sm9_bn_rand_range(sm9_bn_t r, const sm9_bn_t range)
 	return 1;
 }
 
+//验证大数是否一样
 int sm9_bn_equ(const sm9_bn_t a, const sm9_bn_t b)
 {
 	int i;
@@ -255,7 +256,7 @@ void sm9_fp_sub(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 		sm9_bn_add(r, t, a);
 	}
 }
-
+//二倍运算
 void sm9_fp_dbl(sm9_fp_t r, const sm9_fp_t a)
 {
 	sm9_fp_add(r, a, a);
@@ -424,6 +425,7 @@ void sm9_fp_mul(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 	}
 }
 
+//fp平方运算
 void sm9_fp_sqr(sm9_fp_t r, const sm9_fp_t a)
 {
 	sm9_fp_mul(r, a, a);
@@ -637,6 +639,7 @@ void sm9_fp2_mul_fp(sm9_fp2_t r, const sm9_fp2_t a, const sm9_fp_t k)
 	sm9_fp_mul(r[1], a[1], k);
 }
 
+//sp2平方运算
 void sm9_fp2_sqr(sm9_fp2_t r, const sm9_fp2_t a)
 {
 	sm9_fp_t r0, r1, t;
@@ -887,6 +890,7 @@ void sm9_fp4_mul_v(sm9_fp4_t r, const sm9_fp4_t a, const sm9_fp4_t b)
 	sm9_fp2_copy(r[1], r1);
 }
 
+//fp4平方运算
 void sm9_fp4_sqr(sm9_fp4_t r, const sm9_fp4_t a)
 {
 	sm9_fp2_t r0, r1, t;
@@ -1134,6 +1138,7 @@ void sm9_fp12_mul(sm9_fp12_t r, const sm9_fp12_t a, const sm9_fp12_t b)
 	sm9_fp4_copy(r[2], r2);
 }
 
+//fp12平方运算
 void sm9_fp12_sqr(sm9_fp12_t r, const sm9_fp12_t a)
 {
 	sm9_fp4_t r0, r1, r2, t;
@@ -1157,7 +1162,7 @@ void sm9_fp12_sqr(sm9_fp12_t r, const sm9_fp12_t a)
 	sm9_fp4_copy(r[1], r1);
 	sm9_fp4_copy(r[2], r2);
 }
-
+//fp12的逆模运算
 void sm9_fp12_inv(sm9_fp12_t r, const sm9_fp12_t a)
 {
 	if (sm9_fp4_is_zero(a[2])) {
@@ -1209,7 +1214,7 @@ void sm9_fp12_inv(sm9_fp12_t r, const sm9_fp12_t a)
 		sm9_fp4_mul(r[2], t0, t3);
 	}
 }
-
+//fp12的幂指运算
 void sm9_fp12_pow(sm9_fp12_t r, const sm9_fp12_t a, const sm9_bn_t k)
 {
 	char kbits[257];
@@ -1262,7 +1267,7 @@ void sm9_fp4_frobenius(sm9_fp4_t r, const sm9_fp4_t a)
 	sm9_fp2_conjugate(r[1], a[1]);
 	sm9_fp2_mul(r[1], r[1], SM9_BETA);
 }
-
+//conjugate：共轭
 void sm9_fp4_conjugate(sm9_fp4_t r, const sm9_fp4_t a)
 {
 	sm9_fp2_copy(r[0], a[0]);
@@ -1433,7 +1438,7 @@ int sm9_point_equ(const SM9_POINT *P, const SM9_POINT *Q)
 	sm9_fp_mul(t4, Q->Y, t1);
 	return sm9_fp_equ(t3, t4);
 }
-
+//验证点是否在SM9椭圆曲线上
 int sm9_point_is_on_curve(const SM9_POINT *P)
 {
 	sm9_fp_t t0, t1, t2;
@@ -1441,7 +1446,7 @@ int sm9_point_is_on_curve(const SM9_POINT *P)
 		sm9_fp_sqr(t0, P->Y);
 		sm9_fp_sqr(t1, P->X);
 		sm9_fp_mul(t1, t1, P->X);
-		sm9_fp_add(t1, t1, SM9_FIVE);
+		sm9_fp_add(t1, t1, SM9_FIVE);//验证 y^2 = x^3 + 5
 	} else {
 		sm9_fp_sqr(t0, P->X);
 		sm9_fp_mul(t0, t0, P->X);
@@ -1450,8 +1455,9 @@ int sm9_point_is_on_curve(const SM9_POINT *P)
 		sm9_fp_mul(t1, t1, t2);
 		sm9_fp_mul(t1, t1, SM9_FIVE);
 		sm9_fp_add(t1, t0, t1);
-		sm9_fp_sqr(t0, P->Y);
+		sm9_fp_sqr(t0, P->Y);//验证 y^2 = x^3 + 5*z^6
 	}
+
 	if (sm9_fp_equ(t0, t1) != 1) {
 		error_print();
 		return 0;
@@ -2048,6 +2054,7 @@ void sm9_final_exponent(sm9_fp12_t r, const sm9_fp12_t f)
 	sm9_fp12_copy(r, t0);
 }
 
+//sm9双线性对运算，需要优化的核心函数
 void sm9_pairing(sm9_fp12_t r, const SM9_TWIST_POINT *Q, const SM9_POINT *P) {
 	const char *abits = "00100000000000000000000000000000000000010000101100020200101000020";
 

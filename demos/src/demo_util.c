@@ -19,14 +19,14 @@ long getCurrentTime() {
 void getPrintSize(char *retStr, unsigned long long size){
     unsigned long long rest = 0;
     if(size < 1024){
-        sprintf(retStr, "%dB", size);
+        sprintf(retStr, "%dB", (int)size);
         return;
     }else{
         size /= 1024;
     }
 
     if(size < 1024){
-        sprintf(retStr, "%dKB", size);
+        sprintf(retStr, "%dKB", (int)size);
         return;
     }else{
         rest = size % 1024;
@@ -35,11 +35,11 @@ void getPrintSize(char *retStr, unsigned long long size){
 
     if(size < 1024){
         size = size * 100;
-        sprintf(retStr, "%d.%dMB", (size / 100), (rest * 100 / 1024 % 100));
+        sprintf(retStr, "%d.%dMB", (unsigned int)(size / 100), (int)(rest * 100 / 1024 % 100));
         return;
     }else{
         size = size * 100 / 1024;
-        sprintf(retStr, "%d.%dGB", (size / 100), (size % 100));
+        sprintf(retStr, "%d.%dGB", (unsigned int)(size / 100), (int)(size % 100));
         return;
     }
 }
@@ -62,5 +62,5 @@ void demoDoUtilTest(TestFunc testFunc, unsigned int testTime, const char *testNa
     }
     getPrintSize(amountStr, haveTestAmount);
     long costTime = getCurrentTime()-currentTime;
-    printf("testName = %s, haveCostTime = %ld ms, one CostTime = %d ms, testTimes = %d,  testAmount = %s\n", testName, costTime, costTime/testTimes, testTimes, amountStr);
+    printf("testName = %s, haveCostTime = %ld ms, one CostTime = %ld ms, testTimes = %d,  testAmount = %s\n", testName, costTime, costTime/testTimes, testTimes, amountStr);
 }

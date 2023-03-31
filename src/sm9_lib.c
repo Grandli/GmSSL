@@ -209,18 +209,18 @@ int sm9_do_verify(const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen,
 	uint8_t Ha[64];
 
 	// B1: check h in [1, N-1]
-//    if (sm9_bn_is_zero(sig->h) == 1
-//        || sm9_bn_cmp(sig->h, SM9_N) >= 0) {
-//        error_print();
-//        return -1;
-//    }
+    if (sm9_bn_is_zero(sig->h) == 1
+        || sm9_bn_cmp(sig->h, SM9_N) >= 0) {
+        error_print();
+        return -1;
+    }
 
 	// B2: check S in G1
-//    if(!sm9_point_is_on_curve(&sig->S))
-//    {
-//        error_print();
-//        return -1;
-//    }
+    if(!sm9_point_is_on_curve(&sig->S))
+    {
+        error_print();
+        return -1;
+    }
 
 	// B3: g = e(P1, Ppubs)
 	sm9_pairing(g, &mpk->Ppubs, SM9_P1);
@@ -431,7 +431,7 @@ int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 		return -1;
 	}
 	gmssl_memxor(out, K, c2, c2len);
-    printf("sm9_do_decrypt out[%d] = %s\n", c2len, out);
+    printf("sm9_do_decrypt out[%ld] = %s\n", c2len, out);
     free(K);
 	return 1;
 }
@@ -450,6 +450,7 @@ SM9Cipher ::= SEQUENCE {
 	CipherText	OCTET STRING,
 }
 */
+//对密文进行der编码
 int sm9_ciphertext_to_der(const SM9_POINT *C1, const uint8_t *c2, size_t c2len,
 	const uint8_t c3[SM3_HMAC_SIZE], uint8_t **out, size_t *outlen)
 {
@@ -461,11 +462,15 @@ int sm9_ciphertext_to_der(const SM9_POINT *C1, const uint8_t *c2, size_t c2len,
 		error_print();
 		return -1;
 	}
-	if (asn1_int_to_der(en_type, NULL, &len) != 1
+	if (
+        //预计算长度
+        asn1_int_to_der(en_type, NULL, &len) != 1
 		|| asn1_bit_octets_to_der(c1, sizeof(c1), NULL, &len) != 1
 		|| asn1_octet_string_to_der(c3, SM3_HMAC_SIZE, NULL, &len) != 1
 		|| asn1_octet_string_to_der(c2, c2len, NULL, &len) != 1
+        //开始输出，设置总长度
 		|| asn1_sequence_header_to_der(len, out, outlen) != 1
+        //根据数据类型进行封装
 		|| asn1_int_to_der(en_type, out, outlen) != 1
 		|| asn1_bit_octets_to_der(c1, sizeof(c1), out, outlen) != 1
 		|| asn1_octet_string_to_der(c3, SM3_HMAC_SIZE, out, outlen) != 1
@@ -475,7 +480,7 @@ int sm9_ciphertext_to_der(const SM9_POINT *C1, const uint8_t *c2, size_t c2len,
 	}
 	return 1;
 }
-
+//把der编码转为密文
 int sm9_ciphertext_from_der(SM9_POINT *C1, const uint8_t **c2, size_t *c2len,
 	const uint8_t **c3, const uint8_t **in, size_t *inlen)
 {

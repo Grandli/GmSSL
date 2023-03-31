@@ -42,27 +42,28 @@ unsigned int DoSm9Test() {
     const char *id = "Alice";
     //明文数据
     unsigned char message[OneTimeTestAmount]= "chinese standard message";
-    unsigned int messageLen = strlen(message);
+    unsigned long messageLen = strlen(message);
     //密文数据
     unsigned char cipherData[OneTimeTestAmount+1024];
-    unsigned int cipherLen = OneTimeTestAmount+1024;
+    unsigned long cipherLen = OneTimeTestAmount+1024;
     //解密后的数据
     unsigned char outData[OneTimeTestAmount+1024]="";
-    unsigned int outLen = OneTimeTestAmount+1024;
+    unsigned long outLen = OneTimeTestAmount+1024;
     int ret;
-    ret = sm9_encrypt(&master_public, id, strlen(id), message, messageLen, cipherData, &cipherLen);
+    unsigned int idLen = strlen(id);
+    ret = sm9_encrypt(&master_public, id, idLen, message, messageLen, cipherData, &cipherLen);
     if (ret != 1) {
         return 0;
     }
-    printf("sm9_encrypt cipherLen = %d", cipherLen);
-    ret = sm9_decrypt(&key, id, strlen(id), cipherData, cipherLen, (uint8_t *)outData, &outLen);
+    printf("sm9_encrypt cipherLen = %ld", cipherLen);
+    ret = sm9_decrypt(&key, id, idLen, cipherData, cipherLen, (uint8_t *)outData, &outLen);
     if (ret != 1) {
         return 0;
     }
     //如果数据不一致
     if(memcmp(outData, message, outLen)!=0)
     {
-        printf("outData[%d] = %s\n", outLen, outData);
+        printf("outData[%ld] = %s\n", outLen, outData);
         return 0;
     }
     return messageLen;

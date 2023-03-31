@@ -847,7 +847,7 @@ int sm2_jacobian_point_is_on_curve(const SM2_JACOBIAN_POINT *P)
 		sm2_fp_add(t0, t0, P->X);
 		sm2_fp_sqr(t1, P->X);
 		sm2_fp_mul(t1, t1, P->X);
-		sm2_fp_add(t1, t1, SM2_B);
+		sm2_fp_add(t1, t1, SM2_B);//验证 y^2+3*x = x^3 +b
 	} else {
 		sm2_fp_sqr(t0, P->Y);
 		sm2_fp_sqr(t1, P->Z);
