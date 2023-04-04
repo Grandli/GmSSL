@@ -46,10 +46,10 @@ static const sm9_bn_t SM9_N_MINUS_ONE = {0xd69ecf24, 0xe56ee19c, 0x18ea8bee, 0x4
 static const sm9_barrett_bn_t SM9_MU_P = {0xd5c22146, 0x71188f90, 0x1e36081c, 0xf2665f6d, 0xdcd1312a, 0x55f73aeb, 0xeb5759a6, 0x67980e0b, 0x00000001};
 //
 static const sm9_barrett_bn_t SM9_MU_N = {0xdfc97c2f, 0x74df4fd4, 0xc9c073b0, 0x9c95d85e, 0xdcd1312c, 0x55f73aeb, 0xeb5759a6, 0x67980e0b, 0x00000001};
-//
+//为什么是等于 SM9_MU_N+2
 static const sm9_barrett_bn_t SM9_MU_N_MINUS_ONE = {0xdfc97c31, 0x74df4fd4, 0xc9c073b0, 0x9c95d85e, 0xdcd1312c, 0x55f73aeb, 0xeb5759a6, 0x67980e0b, 0x00000001};
 
-
+//G1的生成元
 // P1.X 0x93DE051D62BF718FF5ED0704487D01D6E1E4086909DC3280E8C4E4817C66DDDD
 // P1.Y 0x21FE8DDA4F21E607631065125C395BBC1C1C00CBFA6024350C464CD70A3EA616
 const SM9_POINT _SM9_P1 = {
@@ -60,6 +60,7 @@ const SM9_POINT _SM9_P1 = {
 const SM9_POINT *SM9_P1 = &_SM9_P1;
 
 
+//G2的生成元
 /*
 	X : [0x3722755292130b08d2aab97fd34ec120ee265948d19c17abf9b7213baf82d65bn,
 	     0x85aef3d078640c98597b6027b441a01ff1dd2c190f5e93c454806c11d8806141n],
@@ -241,7 +242,7 @@ int sm9_bn_equ(const sm9_bn_t a, const sm9_bn_t b)
 	return 1;
 }
 
-// r = a + b
+// r = a + b (带mod P 的运算）
 void sm9_fp_add(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 {
 	sm9_bn_add(r, a, b);
@@ -250,9 +251,10 @@ void sm9_fp_add(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 	}
 }
 
-// r = a - b
+// r = a - b (带mod P 的运算）
 void sm9_fp_sub(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 {
+    //先比较大小再处理
 	if (sm9_bn_cmp(a, b) >= 0) {
 		sm9_bn_sub(r, a, b);
 	} else {
@@ -261,13 +263,13 @@ void sm9_fp_sub(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 		sm9_bn_add(r, t, a);
 	}
 }
-// r = 2*a
+// r = 2*a (带mod P 的运算）
 void sm9_fp_dbl(sm9_fp_t r, const sm9_fp_t a)
 {
 	sm9_fp_add(r, a, a);
 }
 
-// r = 3*a
+// r = 3*a (带mod P 的运算）
 void sm9_fp_tri(sm9_fp_t r, const sm9_fp_t a)
 {
 	sm9_fp_t t;
@@ -275,14 +277,16 @@ void sm9_fp_tri(sm9_fp_t r, const sm9_fp_t a)
 	sm9_fp_add(r, t, a);
 }
 
-// r = a/2
+// r = a/2 (带mod P 的运算）
 void sm9_fp_div2(sm9_fp_t r, const sm9_fp_t a)
 {
 	int i;
 	sm9_bn_copy(r, a);
+    //如果是奇数，先转为偶数（SM_P是奇数）
 	if (r[0] & 0x01) {
 		sm9_bn_add(r, r, SM9_P);
 	}
+    // 如果i+1的数是奇数，则取i+1位的1的一半拿过来给i的数用
 	for (i = 0; i < 7; i++) {
 		r[i] = (r[i] >> 1) | ((r[i + 1] & 0x01) << 31);
 	}
@@ -355,7 +359,7 @@ void sm9_fp_mul(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 	uint64_t w;
 	int i, j;
 
-	/* z = a * b */
+	/* s = a * b */
 	for (i = 0; i < 8; i++) {
 		s[i] = 0;
 	}
@@ -369,8 +373,8 @@ void sm9_fp_mul(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 		s[i + 8] = w;
 	}
 
-	/* zl = z mod (2^32)^9 = z[0..8]
-	 * zh = z // (2^32)^7 = z[7..15] */
+	/* zl = s mod (2^32)^9 = s[0..8]
+	 * zh = s // (2^32)^7 = s[7..15] */
 	for (i = 0; i < 9; i++) {
 		zl[i] = s[i];
 		zh[i] = s[7 + i];
@@ -665,7 +669,7 @@ void sm9_fp2_sqr(sm9_fp2_t r, const sm9_fp2_t a)
 {
 	sm9_fp_t r0, r1, t;
 
-	// a0^2 - 2 * a1^2
+	// r0 = a0^2 - 2 * a1^2
 	sm9_fp_sqr(r0, a[0]);
 	sm9_fp_sqr(t, a[1]);
 	sm9_fp_dbl(t, t);

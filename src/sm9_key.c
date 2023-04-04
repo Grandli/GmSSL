@@ -149,6 +149,7 @@ int sm9_sign_master_public_key_from_der(SM9_SIGN_MASTER_KEY *mpk, const uint8_t 
 	return 1;
 }
 
+//把签名私钥转为der编码格式
 int sm9_sign_key_to_der(const SM9_SIGN_KEY *key, uint8_t **out, size_t *outlen)
 {
 	uint8_t ds[65];
@@ -202,6 +203,7 @@ int sm9_sign_key_from_der(SM9_SIGN_KEY *key, const uint8_t **in, size_t *inlen)
 	return 1;
 }
 
+//把加密主私钥转为der编码格式
 int sm9_enc_master_key_to_der(const SM9_ENC_MASTER_KEY *msk, uint8_t **out, size_t *outlen)
 {
 	uint8_t ke[32];

@@ -73,7 +73,7 @@ unsigned int DoSm9Test() {
 int main(void)
 {
     PrePareSM9Test();
-    demoDoUtilTest(DoSm9Test, 3, "sm9");
+    demoDoUtilTest(DoSm9Test, 5, "sm9");
 
 	return 0;
 }
