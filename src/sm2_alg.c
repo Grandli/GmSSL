@@ -22,8 +22,9 @@
 
 #define sm2_print_bn(label,a) sm2_bn_print(stderr,0,0,label,a) // 这个不应该放在这里，应该放在测试文件中
 
+//大数说明：只用低32位存储数据，高32位是存储进位数据之用
 
-
+// SM2的素数P
 const SM2_BN SM2_P = {
 	0xffffffff, 0xffffffff, 0x00000000, 0xffffffff,
 	0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffe,
@@ -34,6 +35,7 @@ const SM2_BN SM2_B = {
 	0xcf6509a7, 0x4d5a9e4b, 0x9d9f5e34, 0x28e9fa9e,
 };
 
+//SM2曲线生成元
 const SM2_JACOBIAN_POINT _SM2_G = {
 	{
 	0x334c74c7, 0x715a4589, 0xf2660be1, 0x8fe30bbf,
@@ -49,6 +51,7 @@ const SM2_JACOBIAN_POINT _SM2_G = {
 };
 const SM2_JACOBIAN_POINT *SM2_G = &_SM2_G;
 
+// SM2 椭圆曲线的阶
 const SM2_BN SM2_N = {
 	0x39d54123, 0x53bbf409, 0x21c6052b, 0x7203df6b,
 	0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffe,
@@ -65,7 +68,7 @@ const SM2_BN SM2_TWO = {2,0,0,0,0,0,0,0};
 const SM2_BN SM2_THREE = {3,0,0,0,0,0,0,0};
 
 
-
+//检测大数的数据是否异常
 int sm2_bn_check(const SM2_BN a)
 {
 	int err = 0;

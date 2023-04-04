@@ -50,15 +50,17 @@ void demoDoUtilTest(TestFunc testFunc, unsigned int testTime, const char *testNa
     unsigned int tmpAmount = 0;
     unsigned int testTimes = 0;
     char amountStr[100]="";
-
+    unsigned long needTestTime = testTime*1000;
     unsigned long currentTime = getCurrentTime();
 
+
     while(1){
-        if(getCurrentTime()>=currentTime+testTime*1000)
+        if(getCurrentTime()>=currentTime+needTestTime)
             break;
         tmpAmount = testFunc();
         haveTestAmount += tmpAmount;
         testTimes++;
+        //printf("current time = %d, cost_time= %ld \n",testTimes, getCurrentTime()-currentTime);
     }
     getPrintSize(amountStr, haveTestAmount);
     long costTime = getCurrentTime()-currentTime;

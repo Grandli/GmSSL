@@ -536,7 +536,7 @@ int asn1_integer_to_der_ex(int tag, const uint8_t *a, size_t alen, uint8_t **out
 		a++;
 		alen--;
 	}
-
+    //主要是比较第一个数是否大于等于128
 	if (a[0] & 0x80) {
 		asn1_length_to_der(alen + 1, out, outlen);
 		if (out && *out) {

@@ -12,28 +12,57 @@
 #include <stdlib.h>
 #include <gmssl/sm2.h>
 #include <gmssl/error.h>
+#include "demo_util.h"
+
+SM2_KEY sm2_key;
+SM2_KEY pub_key;
+
+//提前准备sm2测试
+void PrePareSM2Test()
+{
+    sm2_key_generate(&sm2_key);
+    memcpy(&pub_key, &sm2_key, sizeof(SM2_POINT));
+}
+
+#define OneTimeTestAmount  5*1024
+unsigned int DoSm2Test() {
+    //明文数据
+    unsigned char message[OneTimeTestAmount]= "chinese standard message";
+    unsigned long messageLen = strlen(message);
+    //密文数据
+    unsigned char cipherData[OneTimeTestAmount+1024];
+    unsigned long cipherLen = OneTimeTestAmount+1024;
+    //解密后的数据
+    unsigned char outData[OneTimeTestAmount+1024]="";
+    unsigned long outLen = OneTimeTestAmount+1024;
+    int ret;
+
+    ret = sm2_encrypt(&pub_key, message, messageLen, cipherData, &cipherLen);
+    if(ret==-1)
+    {
+        fprintf(stderr, "sm2_encrypt error\n");
+        return 0;
+    }
+
+    if (sm2_decrypt(&sm2_key, cipherData, cipherLen, outData, &outLen) != 1) {
+        fprintf(stderr, "sm2_decrypt error\n");
+        return 0;
+    }
+
+    //如果数据不一致
+    if(memcmp(outData, message, outLen)!=0)
+    {
+        printf("outData[%ld] = %s\n", outLen, outData);
+        return 0;
+    }
+    return messageLen;
+}
 
 
 int main(void)
 {
-	SM2_KEY sm2_key;
-	SM2_KEY pub_key;
-	unsigned char plaintext[SM2_MAX_PLAINTEXT_SIZE];
-	unsigned char ciphertext[SM2_MAX_CIPHERTEXT_SIZE];
-	size_t len;
-
-	sm2_key_generate(&sm2_key);
-	memcpy(&pub_key, &sm2_key, sizeof(SM2_POINT));
-
-	sm2_encrypt(&pub_key, (uint8_t *)"hello world", strlen("hello world"), ciphertext, &len);
-	format_bytes(stdout, 0, 0, "ciphertext", ciphertext, len);
-
-	if (sm2_decrypt(&sm2_key, ciphertext, len, plaintext, &len) != 1) {
-		fprintf(stderr, "error\n");
-		return 1;
-	}
-	plaintext[len] = 0;
-	printf("plaintext: %s\n", plaintext);
+    PrePareSM2Test();
+    demoDoUtilTest(DoSm2Test, 3, "sm2");
 
 	return 0;
 }

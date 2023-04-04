@@ -415,8 +415,8 @@ int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
     uint8_t *K = (uint8_t *)malloc(c2len+SM3_HMAC_SIZE);
 
 	if (sm9_kem_decrypt(key, id, idlen, C1, c2len+SM3_HMAC_SIZE, K) != 1) {
-        free(K);
 		error_print();
+        free(K);
 		return -1;
 	}
 	//sm3_hmac(k + c2len, SM3_HMAC_SIZE, c2, c2len, mac);
@@ -431,7 +431,7 @@ int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 		return -1;
 	}
 	gmssl_memxor(out, K, c2, c2len);
-    printf("sm9_do_decrypt out[%ld] = %s\n", c2len, out);
+    //printf("sm9_do_decrypt out[%ld] = %s\n", c2len, out);
     free(K);
 	return 1;
 }

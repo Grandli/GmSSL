@@ -37,12 +37,12 @@ void PrePareSM9Test()
     sm9_enc_master_public_key_from_der(&master_public, &cp, &len);
 }
 
-#define OneTimeTestAmount  5*1024
+#define OneTimeTestAmount  128
 unsigned int DoSm9Test() {
     const char *id = "Alice";
     //明文数据
     unsigned char message[OneTimeTestAmount]= "chinese standard message";
-    unsigned long messageLen = strlen(message);
+    unsigned long messageLen = OneTimeTestAmount;//strlen(message);
     //密文数据
     unsigned char cipherData[OneTimeTestAmount+1024];
     unsigned long cipherLen = OneTimeTestAmount+1024;
@@ -55,7 +55,7 @@ unsigned int DoSm9Test() {
     if (ret != 1) {
         return 0;
     }
-    printf("sm9_encrypt cipherLen = %ld", cipherLen);
+    //printf("sm9_encrypt cipherLen = %ld", cipherLen);
     ret = sm9_decrypt(&key, id, idLen, cipherData, cipherLen, (uint8_t *)outData, &outLen);
     if (ret != 1) {
         return 0;
@@ -69,10 +69,11 @@ unsigned int DoSm9Test() {
     return messageLen;
 }
 
+
 int main(void)
 {
     PrePareSM9Test();
-    demoDoUtilTest(DoSm9Test, 1, "sm9");
+    demoDoUtilTest(DoSm9Test, 3, "sm9");
 
 	return 0;
 }

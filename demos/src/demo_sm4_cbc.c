@@ -17,24 +17,26 @@
 #include "demo_util.h"
 
 
-#define OneTimeTestAmount  10*1024
+#define OneTimeTestAmount  5*1024*1024
 
 unsigned int DoSm4Test()
 {
     SM4_KEY sm4_key;
     unsigned char key[16];
     unsigned char iv[16];
+    unsigned char plain[10] =  "goodluck";
     //明文数据
-    unsigned char message[OneTimeTestAmount]="goodluck";
+    unsigned char *message = (unsigned char *)malloc(OneTimeTestAmount);
     unsigned int messageLen = OneTimeTestAmount;
     //密文数据
-    unsigned char cipherData[OneTimeTestAmount+16];
+    unsigned char *cipherData = (unsigned char *)malloc(OneTimeTestAmount+16);
     unsigned int cipherLen = OneTimeTestAmount+16;
     //解密后的数据
-    unsigned char outData[OneTimeTestAmount+16];
+    unsigned char *outData = (unsigned char *)malloc(OneTimeTestAmount+16);
     unsigned int outLen = OneTimeTestAmount+16;
     int i;
 
+    memcpy(message, plain, 8);
     rand_bytes(key, sizeof(key));
     rand_bytes(iv, sizeof(iv));
 
