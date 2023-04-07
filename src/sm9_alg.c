@@ -2552,8 +2552,8 @@ void sm9_fn_from_hash(sm9_fn_t h, const uint8_t Ha[40])
 	int i, j;
 
 	/* s = Ha -> int */
-	for (int i = 0; i < 10; i++) {
-		for (int j = 0; j < 4; j++) {
+	for (i = 0; i < 10; i++) {
+		for (j = 0; j < 4; j++) {
 			s[i] <<= 8;
 			s[i] += Ha[4 * (9-i) + j];
 		}

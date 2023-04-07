@@ -325,8 +325,9 @@ static int test_tls_application_data(void)
 
 int main(void)
 {
+    int i;
 	if (test_tls_encode() != 1) goto err;
-    for(int i=0;i<10;i++)
+    for(i=0;i<10;i++)
     {
         if (test_tls_cbc() != 1) goto err;
     }

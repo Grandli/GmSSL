@@ -29,8 +29,9 @@ static const int tlcp_ciphers[] = { TLS_cipher_ecc_sm4_cbc_sm3 };
 static const size_t tlcp_ciphers_count = sizeof(tlcp_ciphers)/sizeof(tlcp_ciphers[0]);
 
 void printbyte(uint8_t *ptr, int len, char *name) {
+  int i;
   fprintf(stderr, "%s", name);
-  for (int i = 0; i < len; i++) {
+  for ( i = 0; i < len; i++) {
     if (i % 16 == 0)
       fprintf(stderr, "\n");
     fprintf(stderr, "0x%02X ", ptr[i]);
