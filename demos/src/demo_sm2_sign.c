@@ -12,32 +12,45 @@
 #include <stdlib.h>
 #include <gmssl/sm2.h>
 #include <gmssl/error.h>
+#include "demo_util.h"
+
+SM2_KEY sm2_key;
+SM2_KEY pub_key;
+unsigned char dgst[32];
+
+//提前准备sm2测试
+void PrePareSM2SignTest()
+{
+    sm3_digest((unsigned char *)"hello world", strlen("hello world"), dgst);
+    sm2_key_generate(&sm2_key);
+}
+
+#define OneTimeTestAmount  5*1024
+unsigned int DoSm2SignTest()
+{
+    unsigned char sig[SM2_MAX_SIGNATURE_SIZE];
+    size_t sigLen;
+    int ret;
+    sm2_sign(&sm2_key, dgst, sig, &sigLen);
+
+    memcpy(&pub_key, &sm2_key, sizeof(SM2_POINT));
+
+    ret = sm2_verify(&pub_key, dgst, sig, sigLen);
+    if (ret!= 1) {
+        //fprintf(stderr, "verify failed\n");
+        return 0;
+    } else {
+        //printf("verify success\n");
+    }
+    return 32;
+}
 
 
 int main(void)
 {
-	SM2_KEY sm2_key;
-	SM2_KEY pub_key;
-	unsigned char dgst[32];
-	unsigned char sig[SM2_MAX_SIGNATURE_SIZE];
-	size_t siglen;
-	int ret;
+    PrePareSM2SignTest();
+    demoDoUtilTest(DoSm2SignTest, 1, "sm2Sign");
 
-	sm3_digest((unsigned char *)"hello world", strlen("hello world"), dgst);
-	format_bytes(stdout, 0, 0, "to be signed digest", dgst, sizeof(dgst));
-
-	sm2_key_generate(&sm2_key);
-
-	sm2_sign(&sm2_key, dgst, sig, &siglen);
-	format_bytes(stdout, 0, 0, "signature", sig, siglen);
-
-	memcpy(&pub_key, &sm2_key, sizeof(SM2_POINT));
-
-	if ((ret = sm2_verify(&pub_key, dgst, sig, siglen)) != 1) {
-		fprintf(stderr, "verify failed\n");
-	} else {
-		printf("verify success\n");
-	}
 
 	return 0;
 }

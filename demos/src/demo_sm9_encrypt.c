@@ -28,7 +28,7 @@ void PrePareSM9Test()
     const char *id = "Alice";
     uint8_t *p = buf;
     const uint8_t *cp = buf;
-    size_t len;
+    size_t len = 0;
 
     sm9_enc_master_key_generate(&master);
     sm9_enc_master_key_extract_key(&master, id, strlen(id), &key);
@@ -69,11 +69,51 @@ unsigned int DoSm9Test() {
     return messageLen;
 }
 
+//static void doTestMul()
+//{
+//    sm9_fp4_t a0 = {{{2, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}}, {{0, 0, 0, 0, 0, 0, 0, 0}, {7, 0, 0, 0, 0, 0, 0, 0}}};
+//    sm9_fp4_t a1 = {{{3, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}}, {{0, 0, 0, 0, 0, 0, 0, 0}, {13, 0, 0, 0, 0, 0, 0, 0}}};
+//    sm9_fp4_t a2 = {{{4, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}}, {{0, 0, 0, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0}}};
+//    sm9_fp4_t b1 = {{{5, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}}, {{0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}}};
+//    sm9_fp4_t r0, r1, r2, t;
+//
+//    sm9_fp4_mul(r0, a0, a1);
+//    sm9_fp4_mul_v(t, a0, a1);
+//    sm9_fp4_sqr_v(r1, a2);
+//
+//    sm9_fp4_add(r0, r0, t);
+//    sm9_fp4_mul_v(t, a2, b1);
+//    sm9_fp4_add(r0, r0, t);
+//
+//}
+
+static void doTestMul()
+{
+    sm9_fp2_t a0 = {{2, 0, 0, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0}};
+    sm9_fp2_t a1 = {{3, 0, 0, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0}};
+    sm9_fp2_t a2 = {{2, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}};
+    sm9_fp2_t b1 = {{1, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}};
+    sm9_fp2_t r0, r1, r2, t;
+
+    sm9_fp2_mul(r0, a0, a1);
+    sm9_fp2_mul_u(t, a0, a1);
+    sm9_fp2_sqr_u(r1, a2);
+
+    sm9_fp2_add(r0, r0, t);
+
+
+}
 
 int main(void)
 {
+    doTestMul();
     PrePareSM9Test();
-    demoDoUtilTest(DoSm9Test, 5, "sm9");
+    int i = 0;
+    for(i=0;i<10;i++)
+    {
+        demoDoUtilTest(DoSm9Test, 1, "sm9");
+    }
+
 
 	return 0;
 }

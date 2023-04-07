@@ -690,7 +690,8 @@ void sm2_fn_mul(SM2_BN ret, const SM2_BN a, const SM2_BN b)
 	//printf("q  = "); for (i = 7; i >= 0; i--) printf("%08x", (uint32_t)q[i]); printf("\n");
 
 	/* q = q * n mod (2^32)^9 */
-	for (i = 0; i < 17; i++) {
+    ////优化前的代码
+	/*for (i = 0; i < 17; i++) {
 		s[i] = 0;
 	}
 	for (i = 0; i < 8; i++) {
@@ -701,7 +702,29 @@ void sm2_fn_mul(SM2_BN ret, const SM2_BN a, const SM2_BN b)
 			w >>= 32;
 		}
 		s[i + 8] = w;
-	}
+	}*/
+    //优化后的代码开始==================
+    for (i = 0; i < 8; i++) {
+        s[i] = 0;
+    }
+    w = 0;
+    for (j = 0; j < 8; j++) {
+        w += s[j] + q[0] * SM2_N[j];
+        s[j] = w & 0xffffffff;
+        w >>= 32;
+    }
+    s[8] = w;
+
+    for (i = 1; i < 8; i++) {
+        w = 0;
+        for (j = 0; i + j < 9; j++) {
+            w += s[i + j] + q[i] * SM2_N[j];
+            s[i + j] = w & 0xffffffff;
+            w >>= 32;
+        }
+    }
+    //优化后的代码结束==================
+
 	for (i = 0; i < 9; i++) {
 		q[i] = s[i];
 	}
@@ -712,7 +735,7 @@ void sm2_fn_mul(SM2_BN ret, const SM2_BN a, const SM2_BN b)
 	if (sm2_bn288_cmp(zl, q)) {
 		sm2_bn288_sub(zl, zl, q);
 	} else {
-		uint64_t c[9] = {0,0,0,0,0,0,0,0,0x100000000};
+		static uint64_t c[9] = {0,0,0,0,0,0,0,0,0x100000000};
 		sm2_bn288_sub(q, c, q);
 		sm2_bn288_add(zl, q, zl);
 	}
@@ -808,6 +831,7 @@ void sm2_jacobian_point_get_xy(const SM2_JACOBIAN_POINT *P, SM2_BN x, SM2_BN y)
 		}
 	} else {
 		SM2_BN z_inv;
+        //x = X/Z^2, y = Y/Z^3
 		sm2_fp_inv(z_inv, P->Z);
 		if (y) {
 			sm2_fp_mul(y, P->Y, z_inv);
@@ -818,6 +842,30 @@ void sm2_jacobian_point_get_xy(const SM2_JACOBIAN_POINT *P, SM2_BN x, SM2_BN y)
 			sm2_fp_mul(y, y, z_inv);
 		}
 	}
+}
+
+//把点P的Z点，转换为1
+void sm2_jacobian_point_normal(SM2_JACOBIAN_POINT *P)
+{
+    SM2_BN x, y;
+    if (sm2_bn_is_one(P->Z)) {
+        return;
+    } else {
+        SM2_BN z_inv;
+        //x = X/Z^2, y = Y/Z^3
+        sm2_fp_inv(z_inv, P->Z);
+        if (y) {
+            sm2_fp_mul(y, P->Y, z_inv);
+        }
+        sm2_fp_sqr(z_inv, z_inv);
+        sm2_fp_mul(x, P->X, z_inv);
+        if (y) {
+            sm2_fp_mul(y, y, z_inv);
+        }
+    }
+    sm2_bn_copy(P->X, x);
+    sm2_bn_copy(P->Y, y);
+    sm2_bn_set_one(P->Z);
 }
 
 int sm2_jacobian_pointpoint_print(FILE *fp, int fmt, int ind, const char *label, const SM2_JACOBIAN_POINT *P)
@@ -994,10 +1042,13 @@ void sm2_jacobian_point_add(SM2_JACOBIAN_POINT *R, const SM2_JACOBIAN_POINT *P, 
 void sm2_jacobian_point_sub(SM2_JACOBIAN_POINT *R, const SM2_JACOBIAN_POINT *P, const SM2_JACOBIAN_POINT *Q)
 {
 	SM2_JACOBIAN_POINT _T, *T = &_T;
+    //T = -Q
 	sm2_jacobian_point_neg(T, Q);
+    // R = P + T = P - Q
 	sm2_jacobian_point_add(R, P, T);
 }
 
+// k倍点的运算
 void sm2_jacobian_point_mul(SM2_JACOBIAN_POINT *R, const SM2_BN k, const SM2_JACOBIAN_POINT *P)
 {
 	char bits[257] = {0};
@@ -1012,6 +1063,7 @@ void sm2_jacobian_point_mul(SM2_JACOBIAN_POINT *R, const SM2_BN k, const SM2_JAC
 		sm2_jacobian_point_get_xy(P, x, y);
 		sm2_jacobian_point_set_xy(T, x, y);
 		P = T;
+        //sm2_jacobian_point_normal(P);
 	}
 
 	sm2_jacobian_point_set_infinity(Q);
@@ -1059,8 +1111,10 @@ void sm2_jacobian_point_mul_sum(SM2_JACOBIAN_POINT *R, const SM2_BN t, const SM2
 
 	// R = t * P
 	sm2_jacobian_point_mul(R, t, P);
-	sm2_jacobian_point_get_xy(R, x, y);
-	sm2_jacobian_point_set_xy(R, x, y);
+    //此处是把R的Z坐标转换为1
+    sm2_jacobian_point_normal(R);
+//	sm2_jacobian_point_get_xy(R, x, y);
+//	sm2_jacobian_point_set_xy(R, x, y);
 
 	// R = R + T
 	sm2_jacobian_point_add(R, sG, R);

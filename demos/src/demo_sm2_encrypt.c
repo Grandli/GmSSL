@@ -37,17 +37,21 @@ unsigned int DoSm2Test() {
     unsigned long outLen = OneTimeTestAmount+1024;
     int ret;
 
+    beginCommonTime(0);
     ret = sm2_encrypt(&pub_key, message, messageLen, cipherData, &cipherLen);
     if(ret==-1)
     {
         fprintf(stderr, "sm2_encrypt error\n");
         return 0;
     }
+    printf("do sm2_encrypt %f ms\n", endCommonTime(0));
 
+    beginCommonTime(0);
     if (sm2_decrypt(&sm2_key, cipherData, cipherLen, outData, &outLen) != 1) {
         fprintf(stderr, "sm2_decrypt error\n");
         return 0;
     }
+    printf("do sm2_decrypt %f ms\n", endCommonTime(0));
 
     //如果数据不一致
     if(memcmp(outData, message, outLen)!=0)
@@ -62,7 +66,11 @@ unsigned int DoSm2Test() {
 int main(void)
 {
     PrePareSM2Test();
-    demoDoUtilTest(DoSm2Test, 3, "sm2");
+    int i;
+    for(i=0;i<6;i++)
+    {
+        demoDoUtilTest(DoSm2Test, 1, "sm2");
+    }
 
 	return 0;
 }
