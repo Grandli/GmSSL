@@ -96,7 +96,7 @@ int test_sm2_bn(void)
 	printf("sm2 bn test %d %s\n", i++, ok ? "ok" : "failed");
 	if (!ok) return -1;
 
-	sm2_fp_exp(r, x, y);
+    sm2_fp_pow(r, x, y);
 	ok = sm2_bn_equ_hex(r, hex_fp_exp_x_y);
 	printf("sm2 bn test %d %s\n", i++, ok ? "ok" : "failed");
 	if (!ok) return -1;

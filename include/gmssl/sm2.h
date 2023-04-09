@@ -93,7 +93,7 @@ typedef SM2_BN SM2_Fp;
 void sm2_fp_add(SM2_Fp r, const SM2_Fp a, const SM2_Fp b);
 void sm2_fp_sub(SM2_Fp r, const SM2_Fp a, const SM2_Fp b);
 void sm2_fp_mul(SM2_Fp r, const SM2_Fp a, const SM2_Fp b);
-void sm2_fp_exp(SM2_Fp r, const SM2_Fp a, const SM2_Fp e);
+void sm2_fp_pow(SM2_Fp r, const SM2_Fp a, const SM2_Fp e);
 void sm2_fp_dbl(SM2_Fp r, const SM2_Fp a);
 void sm2_fp_tri(SM2_Fp r, const SM2_Fp a);
 void sm2_fp_div2(SM2_Fp r, const SM2_Fp a);

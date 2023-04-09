@@ -33,6 +33,7 @@ static const sm9_bn_t SM9_FIVE = {5,0,0,0,0,0,0,0};
 // mu_p = 2^512 // p = 167980e0beb5759a655f73aebdcd1312af2665f6d1e36081c71188f90d5c22146
 // mu_n = 2^512 // n
 
+//当前SM9椭圆曲线用的函数是：y^2 = x^3 + 5
 //SM9国密标准的曲线的常量的相关定义：大数说明：只用低32位存储数据，高32位是存储进位数据之用
 //当前使用的双线性对，应该是基于BN曲线的R-ate对，eid = 0x04
 //基域特征q的值 SM9_P
@@ -429,7 +430,6 @@ void sm9_fp_mul(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
     }
     s[8] = w;
 
-    //printf("%d s[8] = %ld\n", 0, s[8]);
     for (i = 1; i < 8; i++) {
         w = 0;
         for (j = 0; i + j < 9; j++) {
@@ -437,8 +437,6 @@ void sm9_fp_mul(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
             s[i + j] = w & 0xffffffff;
             w >>= 32;
         }
-//        if(i>=7)
-//            printf("%d s[8] = %ld\n", i, s[8]);
     }
     //优化后的代码结束==================
 
@@ -482,6 +480,7 @@ void sm9_fp_pow(sm9_fp_t r, const sm9_fp_t a, const sm9_bn_t e)
 	sm9_fp_t t;
 	uint32_t w;
 	int i, j;
+    int have_do_mul_flg = 0;
 
 	assert(sm9_bn_cmp(e, SM9_P_MINUS_ONE) < 0);
     // t = 1
@@ -490,21 +489,26 @@ void sm9_fp_pow(sm9_fp_t r, const sm9_fp_t a, const sm9_bn_t e)
 		w = (uint32_t)e[i];
 		for (j = 0; j < 32; j++) {
             // t = t^2
-			sm9_fp_sqr(t, t);
+            if(have_do_mul_flg)
+            {
+                sm9_fp_sqr(t, t);
+            }
+
 			if (w & 0x80000000)
-				sm9_fp_mul(t, t, a);
+            {
+                have_do_mul_flg = 1;
+                sm9_fp_mul(t, t, a);
+            }
 			w <<= 1;
 		}
 	}
-    memcpy(r, t, sizeof(sm9_bn_t));
-	//sm9_bn_copy(r, t);
+
+	sm9_bn_copy(r, t);
 }
 
 void sm9_fp_inv(sm9_fp_t r, const sm9_fp_t a)
 {
-//	sm9_fp_t e;
-//	sm9_bn_sub(e, SM9_P, SM9_TWO);
-	sm9_fp_pow(r, a, SM9_P_MINUS_TWO);
+    sm9_fp_pow(r, a, SM9_P_MINUS_TWO);
 }
 
 int sm9_fp_from_bytes(sm9_fp_t r, const uint8_t buf[32])
@@ -759,7 +763,6 @@ void sm9_fp2_inv(sm9_fp2_t r, const sm9_fp2_t a)
 		sm9_fp_set_zero(r[1]);
 		/* r0 = a0^-1 */
 		sm9_fp_inv(r[0], a[0]);
-
 	}
     else
     {
@@ -867,8 +870,7 @@ void sm9_fp4_set_fp(sm9_fp4_t r, const sm9_fp_t a)
 
 void sm9_fp4_set_fp2(sm9_fp4_t r, const sm9_fp2_t a)
 {
-    memcpy(r[0], a, sizeof(sm9_fp2_t));
-	//sm9_fp2_copy(r[0], a);
+	sm9_fp2_copy(r[0], a);
 	sm9_fp2_set_zero(r[1]);
 }
 
@@ -930,10 +932,8 @@ void sm9_fp4_mul(sm9_fp4_t r, const sm9_fp4_t a, const sm9_fp4_t b)
 	sm9_fp2_mul(t, a[1], b[0]);
 	sm9_fp2_add(r1, r1, t);
 
-    memcpy(r[0], r0, sizeof(sm9_fp2_t));
-    memcpy(r[1], r1, sizeof(sm9_fp2_t));
-//	sm9_fp2_copy(r[0], r0);
-//	sm9_fp2_copy(r[1], r1);
+	sm9_fp2_copy(r[0], r0);
+	sm9_fp2_copy(r[1], r1);
 }
 
 void sm9_fp4_mul_fp(sm9_fp4_t r, const sm9_fp4_t a, const sm9_fp_t k)
@@ -962,10 +962,8 @@ void sm9_fp4_mul_v(sm9_fp4_t r, const sm9_fp4_t a, const sm9_fp4_t b)
 	sm9_fp2_mul_u(t, a[1], b[1]);
 	sm9_fp2_add(r1, r1, t);
 
-    memcpy(r[0], r0, sizeof(sm9_fp2_t));
-    memcpy(r[1], r1, sizeof(sm9_fp2_t));
-//	sm9_fp2_copy(r[0], r0);
-//	sm9_fp2_copy(r[1], r1);
+	sm9_fp2_copy(r[0], r0);
+	sm9_fp2_copy(r[1], r1);
 }
 
 //fp4平方运算
@@ -982,10 +980,8 @@ void sm9_fp4_sqr(sm9_fp4_t r, const sm9_fp4_t a)
 	sm9_fp2_mul(r1, a[0], a[1]);
 	sm9_fp2_dbl(r1, r1);
 
-    memcpy(r[0], r0, sizeof(sm9_fp2_t));
-    memcpy(r[1], r1, sizeof(sm9_fp2_t));
-//	sm9_fp2_copy(r[0], r0);
-//	sm9_fp2_copy(r[1], r1);
+	sm9_fp2_copy(r[0], r0);
+	sm9_fp2_copy(r[1], r1);
 }
 
 void sm9_fp4_sqr_v(sm9_fp4_t r, const sm9_fp4_t a)
@@ -1001,10 +997,8 @@ void sm9_fp4_sqr_v(sm9_fp4_t r, const sm9_fp4_t a)
 	sm9_fp2_sqr_u(t, a[1]);
 	sm9_fp2_add(r1, r1, t);
 
-    memcpy(r[0], r0, sizeof(sm9_fp2_t));
-    memcpy(r[1], r1, sizeof(sm9_fp2_t));
-//	sm9_fp2_copy(r[0], r0);
-//	sm9_fp2_copy(r[1], r1);
+	sm9_fp2_copy(r[0], r0);
+	sm9_fp2_copy(r[1], r1);
 }
 
 // r = a^-1
@@ -1022,11 +1016,8 @@ void sm9_fp4_inv(sm9_fp4_t r, const sm9_fp4_t a)
 
 	sm9_fp2_mul(r1, a[1], k);
 
-
-    memcpy(r[0], r0, sizeof(sm9_fp2_t));
-    memcpy(r[1], r1, sizeof(sm9_fp2_t));
-//    sm9_fp2_copy(r[0], r0);
-//    sm9_fp2_copy(r[1], r1);
+    sm9_fp2_copy(r[0], r0);
+    sm9_fp2_copy(r[1], r1);
 }
 
 // r = a
@@ -1632,6 +1623,7 @@ void sm9_point_get_xy(const SM9_POINT *P, sm9_fp_t x, sm9_fp_t y)
 	if (sm9_fp_is_one(P->Z)) {
 		sm9_fp_copy(x, P->X);
 		sm9_fp_copy(y, P->Y);
+        return;
 	}
 
 	sm9_fp_inv(z_inv, P->Z);
@@ -1917,17 +1909,20 @@ int sm9_twist_point_equ(const SM9_TWIST_POINT *P, const SM9_TWIST_POINT *Q)
 	return sm9_fp2_equ(t3, t4);
 }
 
+//检查点是否在扭曲线上
 int sm9_twist_point_is_on_curve(const SM9_TWIST_POINT *P)
 {
 	sm9_fp2_t t0, t1, t2;
 
 	if (sm9_fp2_is_one(P->Z)) {
+        //y^2  = x^3 + SM9_FP2_5U
 		sm9_fp2_sqr(t0, P->Y);
 		sm9_fp2_sqr(t1, P->X);
 		sm9_fp2_mul(t1, t1, P->X);
 		sm9_fp2_add(t1, t1, SM9_FP2_5U);
 
 	} else {
+        // y^2 = x^3 + SM9_FP2_5U*z^6
 		sm9_fp2_sqr(t0, P->X);
 		sm9_fp2_mul(t0, t0, P->X);
 		sm9_fp2_sqr(t1, P->Z);
@@ -2474,7 +2469,8 @@ void sm9_fn_mul(sm9_fn_t r, const sm9_fn_t a, const sm9_fn_t b)
 	}
 
 	/* q = q * n mod (2^32)^9 */
-	for (i = 0; i < 18; i++) {
+    //优化前的代码
+	/*for (i = 0; i < 18; i++) {
 		s[i] = 0;
 	}
 	for (i = 0; i < 9; i++) {
@@ -2485,7 +2481,30 @@ void sm9_fn_mul(sm9_fn_t r, const sm9_fn_t a, const sm9_fn_t b)
 			w >>= 32;
 		}
 		s[i + 8] = w;
-	}
+	}*/
+
+    //优化后的代码开始==================
+    for (i = 0; i < 8; i++) {
+        s[i] = 0;
+    }
+    w = 0;
+    for (j = 0; j < 8; j++) {
+        w += s[j] + q[0] * SM9_N[j];
+        s[j] = w & 0xffffffff;
+        w >>= 32;
+    }
+    s[8] = w;
+
+    for (i = 1; i < 8; i++) {
+        w = 0;
+        for (j = 0; i + j < 9; j++) {
+            w += s[i + j] + q[i] * SM9_N[j];
+            s[i + j] = w & 0xffffffff;
+            w >>= 32;
+        }
+    }
+    //优化后的代码结束==================
+
 	for (i = 0; i < 9; i++) {
 		q[i] = s[i];
 	}
@@ -2495,7 +2514,7 @@ void sm9_fn_mul(sm9_fn_t r, const sm9_fn_t a, const sm9_fn_t b)
 	if (sm9_barrett_bn_cmp(zl, q)) {
 		sm9_barrett_bn_sub(zl, zl, q);
 	} else {
-		sm9_barrett_bn_t c = {0,0,0,0,0,0,0,0,0x100000000};
+		static sm9_barrett_bn_t c = {0,0,0,0,0,0,0,0,0x100000000};
 		sm9_barrett_bn_sub(q, c, q);
 		sm9_barrett_bn_add(zl, q, zl);
 	}
@@ -2584,7 +2603,8 @@ void sm9_fn_from_hash(sm9_fn_t h, const uint8_t Ha[40])
 	}
 
 	/* q = q * p mod (2^32)^9 */
-	for (i = 0; i < 18; i++) {
+    //优化前的代码
+	/*for (i = 0; i < 18; i++) {
 		s[i] = 0;
 	}
 	for (i = 0; i < 9; i++) {
@@ -2595,7 +2615,30 @@ void sm9_fn_from_hash(sm9_fn_t h, const uint8_t Ha[40])
 			w >>= 32;
 		}
 		s[i + 8] = w;
-	}
+	}*/
+
+    //优化后的代码开始==================
+    for (i = 0; i < 8; i++) {
+        s[i] = 0;
+    }
+    w = 0;
+    for (j = 0; j < 8; j++) {
+        w += s[j] + q[0] * SM9_N_MINUS_ONE[j];
+        s[j] = w & 0xffffffff;
+        w >>= 32;
+    }
+    s[8] = w;
+
+    for (i = 1; i < 8; i++) {
+        w = 0;
+        for (j = 0; i + j < 9; j++) {
+            w += s[i + j] + q[i] * SM9_N_MINUS_ONE[j];
+            s[i + j] = w & 0xffffffff;
+            w >>= 32;
+        }
+    }
+    //优化后的代码结束==================
+
 	for (i = 0; i < 9; i++) {
 		q[i] = s[i];
 	}
@@ -2605,7 +2648,7 @@ void sm9_fn_from_hash(sm9_fn_t h, const uint8_t Ha[40])
 	if (sm9_barrett_bn_cmp(zl, q)) {
 		sm9_barrett_bn_sub(zl, zl, q);
 	} else {
-		sm9_barrett_bn_t c = {0,0,0,0,0,0,0,0,0x100000000};
+		static sm9_barrett_bn_t c = {0,0,0,0,0,0,0,0,0x100000000};
 		sm9_barrett_bn_sub(q, c, q);
 		sm9_barrett_bn_add(zl, q, zl);
 	}

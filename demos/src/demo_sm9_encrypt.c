@@ -109,7 +109,7 @@ int main(void)
     doTestMul();
     PrePareSM9Test();
     int i = 0;
-    for(i=0;i<10;i++)
+    for(i=0;i<3;i++)
     {
         demoDoUtilTest(DoSm9Test, 1, "sm9");
     }

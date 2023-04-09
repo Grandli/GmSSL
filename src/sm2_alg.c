@@ -444,19 +444,26 @@ void sm2_fp_sqr(SM2_Fp r, const SM2_Fp a)
 	sm2_fp_mul(r, a, a);
 }
 
-void sm2_fp_exp(SM2_Fp r, const SM2_Fp a, const SM2_Fp e)
+void sm2_fp_pow(SM2_Fp r, const SM2_Fp a, const SM2_Fp e)
 {
 	SM2_BN t;
 	uint32_t w;
 	int i, j;
+    int have_do_mul_flg = 0;
 
 	sm2_bn_set_one(t);
 	for (i = 7; i >= 0; i--) {
 		w = (uint32_t)e[i];
 		for (j = 0; j < 32; j++) {
-			sm2_fp_sqr(t, t);
+            if(have_do_mul_flg)
+            {
+                sm2_fp_sqr(t, t);
+            }
 			if (w & 0x80000000)
-				sm2_fp_mul(t, t, a);
+            {
+                have_do_mul_flg = 1;
+                sm2_fp_mul(t, t, a);
+            }
 			w <<= 1;
 		}
 	}
@@ -550,7 +557,7 @@ int sm2_fp_sqrt(SM2_Fp r, const SM2_Fp a)
 	// r = a^((p + 1)/4) when p = 3 (mod 4)
 	sm2_bn_add(u, SM2_P, SM2_ONE);
 	sm2_bn_rshift(u, u, 2);
-	sm2_fp_exp(y, a, u);
+    sm2_fp_pow(y, a, u);
 
 	// check r^2 == a
 	sm2_fp_sqr(u, y);
@@ -1163,7 +1170,7 @@ int sm2_point_from_x(SM2_POINT *P, const uint8_t x[32], int y)
 	sm2_fp_add(_g, _g, SM2_B);
 
 	// y = g^(u + 1) mod p, u = (p - 3)/4
-	sm2_fp_exp(_y, _g, SM2_U_PLUS_ONE);
+    sm2_fp_pow(_y, _g, SM2_U_PLUS_ONE);
 
 	// z = y^2 mod p
 	sm2_fp_sqr(_z, _y);
@@ -1393,7 +1400,7 @@ int sm2_point_from_hash(SM2_POINT *R, const uint8_t *data, size_t datalen)
 		sm2_fp_add(s, s, SM2_B);
 
 		// y = s^((p+1)/4) = (sqrt(s) (mod p))
-		sm2_fp_exp(y, s, u);
+        sm2_fp_pow(y, s, u);
 		sm2_fp_sqr(s_, y);
 
 		data = dgst;

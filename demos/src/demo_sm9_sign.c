@@ -49,13 +49,13 @@ unsigned int DoSm9SignTest() {
     sm9_sign_update(&sign_ctx, (uint8_t *) message, messageLen);
     sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen);
 
-    format_bytes(stdout, 0, 0, "signature", sig, siglen);
+    //format_bytes(stdout, 0, 0, "signature", sig, siglen);
 
 
     sm9_verify_init(&sign_ctx);
     sm9_verify_update(&sign_ctx, (uint8_t *) message, messageLen);
     ret = sm9_verify_finish(&sign_ctx, sig, siglen, &sign_master_public, id, strlen(id));
-    printf("verify %s\n", ret == 1 ? "success" : "failure");
+    //printf("verify %s\n", ret == 1 ? "success" : "failure");
 
     return OneTimeTestAmount;
 }
