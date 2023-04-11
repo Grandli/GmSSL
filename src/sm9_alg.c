@@ -1614,6 +1614,7 @@ void sm9_point_copy(SM9_POINT *R, const SM9_POINT *P)
 	*R = *P;
 }
 
+//从Jacob投影坐标系，获取仿射坐标系的x，y坐标
 void sm9_point_get_xy(const SM9_POINT *P, sm9_fp_t x, sm9_fp_t y)
 {
 	sm9_fp_t z_inv;
@@ -1626,6 +1627,7 @@ void sm9_point_get_xy(const SM9_POINT *P, sm9_fp_t x, sm9_fp_t y)
         return;
 	}
 
+    // x = X/Z^2  y = Y/Z^3
 	sm9_fp_inv(z_inv, P->Z);
 	if (y)
 		sm9_fp_mul(y, P->Y, z_inv);
@@ -1798,6 +1800,7 @@ void sm9_point_add(SM9_POINT *R, const SM9_POINT *P, const SM9_POINT *Q)
 	sm9_fp_copy(R->Z, Z3);
 }
 
+//获取P的负元
 void sm9_point_neg(SM9_POINT *R, const SM9_POINT *P)
 {
 	sm9_fp_copy(R->X, P->X);

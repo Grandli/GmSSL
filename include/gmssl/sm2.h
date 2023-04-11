@@ -287,7 +287,7 @@ _gmssl_export int sm2_private_key_info_encrypt_to_pem(const SM2_KEY *key, const 
 // FIXME: #define default buffer size
 _gmssl_export int sm2_private_key_info_decrypt_from_pem(SM2_KEY *key, const char *pass, FILE *fp);
 
-
+//SM2签名的数据结构
 typedef struct {
 	uint8_t r[32];
 	uint8_t s[32];

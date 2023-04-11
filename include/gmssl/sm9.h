@@ -397,13 +397,13 @@ SM9SignPrivateKey ::= SEQUENCE {
 	Ppubs	BIT STRING -- uncompressed octets of twisted point }
 */
 typedef struct {
-	SM9_TWIST_POINT Ppubs; // Ppubs = ks * P2
-	sm9_fn_t ks;
+	SM9_TWIST_POINT Ppubs; // 签名主公钥：Ppubs = ks * P2
+	sm9_fn_t ks;//签名主私钥
 } SM9_SIGN_MASTER_KEY;
 
 typedef struct {
-	SM9_TWIST_POINT Ppubs;
-	SM9_POINT ds;
+	SM9_TWIST_POINT Ppubs; // 签名主公钥
+	SM9_POINT ds; //用户私钥
 } SM9_SIGN_KEY;
 
 int sm9_sign_master_key_generate(SM9_SIGN_MASTER_KEY *master);
@@ -442,10 +442,10 @@ SM9Signature ::= SEQUENCE {
 	h	OCTET STRING,
 	S	BIT STRING -- uncompressed octets of ECPoint }
 */
-//SM9签名数据中的
+//SM9签名的数据结构
 typedef struct {
-	sm9_fn_t h;//h = H2(M||w,N)
-	SM9_POINT S;//
+	sm9_fn_t h;//h = H2(M||w,N) 其中w = g^r
+	SM9_POINT S;// S = ((r - h) mod N)*ds  其中r为随机数，ds为用户私钥
 } SM9_SIGNATURE;
 
 int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *sig);
@@ -483,13 +483,13 @@ SM9EncPrivateKey ::= SEQUENCE {
 */
 
 typedef struct {
-	SM9_POINT Ppube; // Ppube = ke * P1
-	sm9_fn_t ke;
+	SM9_POINT Ppube; // 加密主公钥 Ppube = ke * P1
+	sm9_fn_t ke; //加密主私钥
 } SM9_ENC_MASTER_KEY;
 
 typedef struct {
-	SM9_POINT Ppube;
-	SM9_TWIST_POINT de;
+	SM9_POINT Ppube; // 加密主公钥
+	SM9_TWIST_POINT de; // 用户解密私钥
 } SM9_ENC_KEY;
 
 int sm9_enc_master_key_generate(SM9_ENC_MASTER_KEY *master);

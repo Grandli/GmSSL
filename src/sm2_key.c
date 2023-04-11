@@ -143,11 +143,13 @@ int sm2_public_key_from_der(SM2_KEY *key, const uint8_t **in, size_t *inlen)
 	return 1;
 }
 
+//打印sm2公钥
 int sm2_public_key_print(FILE *fp, int fmt, int ind, const char *label, const SM2_KEY *pub_key)
 {
 	return sm2_point_print(fp, fmt, ind, label, &pub_key->public_key);
 }
 
+//把sm2的公钥算法标识转为der编码
 int sm2_public_key_algor_to_der(uint8_t **out, size_t *outlen)
 {
 	if (x509_public_key_algor_to_der(OID_ec_public_key, OID_sm2, out, outlen) != 1) {
@@ -157,6 +159,7 @@ int sm2_public_key_algor_to_der(uint8_t **out, size_t *outlen)
 	return 1;
 }
 
+//从der编码的数据获取sm2的公钥算法标识
 int sm2_public_key_algor_from_der(const uint8_t **in, size_t *inlen)
 {
 	int ret;

@@ -272,6 +272,7 @@ int sm2_sign_fixlen(const SM2_KEY *key, const uint8_t dgst[32], size_t siglen, u
 	return -1;
 }
 
+//sm2验签
 int sm2_verify(const SM2_KEY *key, const uint8_t dgst[32], const uint8_t *sigbuf, size_t siglen)
 {
 	SM2_SIGNATURE sig;
