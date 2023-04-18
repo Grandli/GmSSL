@@ -65,8 +65,8 @@ void demoDoUtilTest(TestFunc testFunc, unsigned int testTime, const char *testNa
         testTimes++;
         //printf("current time = %d, cost_time= %ld \n",testTimes, getCurrentTime()-currentTime);
     }
-    getPrintSize(amountStr, haveTestAmount);
     long costTime = getCurrentTime()-currentTime;
+    getPrintSize(amountStr, haveTestAmount);
     printf("testName = %s, haveCostTime = %ld ms, one CostTime = %f ms, testTimes = %d,  testAmount = %s\n", testName, costTime, (float)costTime/testTimes, testTimes, amountStr);
 }
 

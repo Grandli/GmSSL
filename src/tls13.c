@@ -50,13 +50,13 @@ static int tls13_client_hello_exts[] = {
 struct {
 	opaque content[TLSPlaintext.length];
 	ContentType type;
-	uint8 zeros[length_of_padding];
+	unsigned char zeros[length_of_padding];
 } TLSInnerPlaintext;
 
 struct {
 	ContentType opaque_type = application_data; // 23
 	ProtocolVersion legacy_record_version = 0x0303; // TLS v1.2
-	uint16 length;
+	unsigned short length;
 	opaque encrypted_record[TLSCiphertext.length];
 } TLSCiphertext;
 */
@@ -372,7 +372,7 @@ HKDF-Expand-Label(Secret, Label, Context, Length) =
 	HKDF-Expand(Secret, HkdfLabel, Length);
 
 	HkdfLabel = struct {
-		uint16 length = Length;
+		unsigned short length = Length;
 		opaque label<7..255> = "tls13 " + Label;
 		opaque context<0..255> = Context; }
 

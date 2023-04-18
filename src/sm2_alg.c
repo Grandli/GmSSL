@@ -1010,25 +1010,32 @@ void sm2_jacobian_point_add(SM2_JACOBIAN_POINT *R, const SM2_JACOBIAN_POINT *P, 
 
 	assert(sm2_bn_is_one(Q->Z));
 
+    // T1 <- x2*Z1^2 - X1 ;  T2 <- y2*Z1^3 -Y1
 	sm2_fp_sqr(T1, Z1);
 	sm2_fp_mul(T2, T1, Z1);
 	sm2_fp_mul(T1, T1, x2);
 	sm2_fp_mul(T2, T2, y2);
 	sm2_fp_sub(T1, T1, X1);
 	sm2_fp_sub(T2, T2, Y1);
-	if (sm2_bn_is_zero(T1)) {
-		if (sm2_bn_is_zero(T2)) {
-			SM2_JACOBIAN_POINT _Q, *Q = &_Q;
-			sm2_jacobian_point_set_xy(Q, x2, y2);
 
-			sm2_jacobian_point_dbl(R, Q);
+	if (sm2_bn_is_zero(T1)) {
+        //如果T1和T2都为0, 返回R = 2Q
+		if (sm2_bn_is_zero(T2)) {
+			SM2_JACOBIAN_POINT _Q, *innerQ = &_Q;
+			sm2_jacobian_point_set_xy(innerQ, x2, y2);
+
+			sm2_jacobian_point_dbl(R, innerQ);
 			return;
-		} else {
+		}
+        //如果T1为0， T2不为0，返回R为无穷远点 (1, 1, 0)
+        else {
 			sm2_jacobian_point_set_infinity(R);
 			return;
 		}
 	}
+    // Z3 = (x2*Z1^2 - X1)*Z1
 	sm2_fp_mul(Z3, Z1, T1);
+
 	sm2_fp_sqr(T3, T1);
 	sm2_fp_mul(T4, T3, T1);
 	sm2_fp_mul(T3, T3, X1);
@@ -1036,6 +1043,7 @@ void sm2_jacobian_point_add(SM2_JACOBIAN_POINT *R, const SM2_JACOBIAN_POINT *P, 
 	sm2_fp_sqr(X3, T2);
 	sm2_fp_sub(X3, X3, T1);
 	sm2_fp_sub(X3, X3, T4);
+
 	sm2_fp_sub(T3, T3, X3);
 	sm2_fp_mul(T3, T3, T2);
 	sm2_fp_mul(T4, T4, Y1);

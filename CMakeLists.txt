@@ -364,3 +364,5 @@ if (UNIX)
 	include(RpmPacking)
 	include(CPack)
 endif (UNIX)
+
+add_subdirectory(gm_demos)

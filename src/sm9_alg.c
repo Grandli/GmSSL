@@ -46,6 +46,8 @@ static const sm9_bn_t SM9_P_MINUS_ONE = {0xe351457c, 0xe56f9b27, 0x1a7aeedb, 0x2
 static const sm9_bn_t SM9_P_MINUS_TWO = {0xe351457b, 0xe56f9b27, 0x1a7aeedb, 0x21f2934b, 0xf58ec745, 0xd603ab4f, 0x02a3a6f1, 0xb6400000};
 //N-1
 static const sm9_bn_t SM9_N_MINUS_ONE = {0xd69ecf24, 0xe56ee19c, 0x18ea8bee, 0x49f2934b, 0xf58ec744, 0xd603ab4f, 0x02a3a6f1, 0xb6400000};
+//N-2
+static const sm9_bn_t SM9_N_MINUS_TWO = {0xd69ecf23, 0xe56ee19c, 0x18ea8bee, 0x49f2934b, 0xf58ec744, 0xd603ab4f, 0x02a3a6f1, 0xb6400000};
 //
 static const sm9_barrett_bn_t SM9_MU_P = {0xd5c22146, 0x71188f90, 0x1e36081c, 0xf2665f6d, 0xdcd1312a, 0x55f73aeb, 0xeb5759a6, 0x67980e0b, 0x00000001};
 //
@@ -117,7 +119,7 @@ void sm9_bn_to_bytes(const sm9_bn_t a, uint8_t out[32])
 	int i;
 	for (i = 7; i >= 0; i--) {
 		PUTU32(out, (uint32_t)a[i]);
-		out += sizeof(uint32_t);
+		out += 4;//sizeof(uint32_t);
 	}
 }
 
@@ -126,7 +128,7 @@ void sm9_bn_from_bytes(sm9_bn_t r, const uint8_t in[32])
 	int i;
 	for (i = 7; i >= 0; i--) {
 		r[i] = GETU32(in);
-		in += sizeof(uint32_t);
+		in += 4;//sizeof(uint32_t);
 	}
 }
 
@@ -202,25 +204,23 @@ void sm9_bn_add(sm9_bn_t r, const sm9_bn_t a, const sm9_bn_t b)
 	for (i = 1; i < 8; i++) {
         //(r[i-1] >> 32)为上一个运算的存在高32位的进位数据
 		r[i] = a[i] + b[i] + (r[i-1] >> 32);
-	}
-	for (i = 0; i < 7; i++) {
-		r[i] &= 0xffffffff;//只取低32位返回
+        //对于前7个，只取低32位返回
+        r[i-1] &= 0xffffffff;
 	}
 }
 
 // ret = a - b
-void sm9_bn_sub(sm9_bn_t ret, const sm9_bn_t a, const sm9_bn_t b)
+void sm9_bn_sub(sm9_bn_t r, const sm9_bn_t a, const sm9_bn_t b)
 {
 	int i;
-	sm9_bn_t r;
+	//sm9_bn_t r;
 	r[0] = ((uint64_t)1 << 32) + a[0] - b[0];
 	for (i = 1; i < 7; i++) {
-		r[i] = 0xffffffff + a[i] - b[i] + (r[i - 1] >> 32);
+		r[i] = 0xffffffff + a[i] - b[i] + (r[i - 1] >> 32);//获取r[i - 1] 的高32位
 		r[i - 1] &= 0xffffffff;//只取低32位返回
 	}
 	r[i] = a[i] - b[i] + (r[i - 1] >> 32) - 1;
 	r[i - 1] &= 0xffffffff;//只取低32位返回
-	sm9_bn_copy(ret, r);
 }
 
 // r = rand(range) (返回的r要小于range）
@@ -286,7 +286,7 @@ void sm9_fp_div2(sm9_fp_t r, const sm9_fp_t a)
 {
 	int i;
 	sm9_bn_copy(r, a);
-    //如果是奇数，先转为偶数（SM_P是奇数）
+    //如果r[0]是奇数，先转为偶数（SM_P是奇数）
 	if (r[0] & 0x01) {
 		sm9_bn_add(r, r, SM9_P);
 	}
@@ -333,15 +333,12 @@ void sm9_barrett_bn_add(sm9_barrett_bn_t r, const sm9_barrett_bn_t a, const sm9_
 	r[0] = a[0] + b[0];
 	for (i = 1; i < 9; i++) {
 		r[i] = a[i] + b[i] + (r[i-1] >> 32);
-	}
-	for (i = 0; i < 8; i++) {
-		r[i] &= 0xffffffff;
+        r[i-1] &= 0xffffffff;
 	}
 }
 
-void sm9_barrett_bn_sub(sm9_barrett_bn_t ret, const sm9_barrett_bn_t a, const sm9_barrett_bn_t b)
+void sm9_barrett_bn_sub(sm9_barrett_bn_t r, const sm9_barrett_bn_t a, const sm9_barrett_bn_t b)
 {
-	sm9_barrett_bn_t r;
 	int i;
 	r[0] = ((uint64_t)1 << 32) + a[0] - b[0];
 	for (i = 1; i < 8; i++) {
@@ -350,17 +347,14 @@ void sm9_barrett_bn_sub(sm9_barrett_bn_t ret, const sm9_barrett_bn_t a, const sm
 	}
 	r[i] = a[i] - b[i] + (r[i - 1] >> 32) - 1;
 	r[i - 1] &= 0xffffffff;
-	for (i = 0; i < 9; i++) {
-		ret[i] = r[i];
-	}
 }
 
 // r = a * b
 void sm9_fp_mul(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 {
 	uint64_t s[18];
-	sm9_barrett_bn_t zh, zl, q;
-	uint64_t w;
+	sm9_barrett_bn_t zl, q;
+    uint64_t w;
 	int i, j;
 
 	/* s = a * b */
@@ -381,7 +375,7 @@ void sm9_fp_mul(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 	 * zh = s // (2^32)^7 = s[7..15] */
 	for (i = 0; i < 9; i++) {
 		zl[i] = s[i];
-		zh[i] = s[7 + i];
+		q[i] = s[7 + i];
 	}
 
 	/* q = zh * mu // (2^32)^9 */
@@ -390,14 +384,15 @@ void sm9_fp_mul(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 	}
 	for (i = 0; i < 9; i++) {
 		w = 0;
-		for (j = 0; j < 9; j++) {
-			w += s[i + j] + zh[i] * SM9_MU_P[j];
+		for (j = 0; j<9; j++) {
+			w += s[i + j] + q[i] * SM9_MU_P[j];
 			s[i + j] = w & 0xffffffff;
 			w >>= 32;
 		}
 		s[i + 9] = w;
 	}
-	for (i = 0; i < 9; i++) {
+    //输出q[i]
+	for (i = 0; i < 8; i++) {
 		q[i] = s[9 + i];
 	}
 
@@ -419,12 +414,9 @@ void sm9_fp_mul(sm9_fp_t r, const sm9_fp_t a, const sm9_fp_t b)
 	}*/
 
     //优化后的代码开始==================
-    for (i = 0; i < 8; i++) {
-        s[i] = 0;
-    }
     w = 0;
     for (j = 0; j < 8; j++) {
-        w += s[j] + q[0] * SM9_P[j];
+        w += q[0] * SM9_P[j];
         s[j] = w & 0xffffffff;
         w >>= 32;
     }
@@ -482,7 +474,8 @@ void sm9_fp_pow(sm9_fp_t r, const sm9_fp_t a, const sm9_bn_t e)
 	int i, j;
     int have_do_mul_flg = 0;
 
-	assert(sm9_bn_cmp(e, SM9_P_MINUS_ONE) < 0);
+    //一般情况下，不用做这个断言
+	//assert(sm9_bn_cmp(e, SM9_P_MINUS_ONE) < 0);
     // t = 1
 	sm9_bn_set_one(t);
 	for (i = 7; i >= 0; i--) {
@@ -1682,15 +1675,15 @@ int sm9_point_is_on_curve(const SM9_POINT *P)
 }
 
 /*
- * 对于SM9使用的椭圆曲线 y^2 = x^3+b，有以下的公式
+ * 对于SM9使用的椭圆曲线 y^2 = x^3+ax+b，a = 0, b = 5有以下的公式
  * 利用 Jacobi 系数做二倍点运算
  * (X3, Y3, Z3) =2(X1, Y1, Z1)的公式
  * 具体如下: A = 4*X1*Y1^2
  *         B = 8*Y1^4
- *         C = 3*X1^2 + a*Z1^4 = 3*X1^2 - 3*Z1^4 = 3*（X1-Z1^2)*（X1+Z1^2)
+ *         C = 3*X1^2 + a*Z1^4 = 3*X1^2
  *         D = C^2 - 2*A
- *         X3 = D = 9X1^4 - 8*Y1^2*X
- *         Y3 = C*(A-D)-B = 3*x1^2*(12*x1*y1^2 - 9*x1^4) - 8*Y1^4
+ *         X3 = D = 9X1^4 - 8*Y1^2*X1
+ *         Y3 = C*(A-D)-B = 3*x1^2 *(12*x1*y1^2 - C^2) - 8*Y1^4
  *         Z3 = 2*Y1*Z1
  */
 //SM9 Jacobi的点做二倍点运算
@@ -1706,20 +1699,24 @@ void sm9_point_dbl(SM9_POINT *R, const SM9_POINT *P)
 		return;
 	}
 
+    //具体运算过程
 	sm9_fp_sqr(T2, X1);
-	sm9_fp_tri(T2, T2);
+	sm9_fp_tri(T2, T2);// T2 = 3*X1^2
+
 	sm9_fp_dbl(Y3, Y1);
-	sm9_fp_mul(Z3, Y3, Z1);
-	sm9_fp_sqr(Y3, Y3);
-	sm9_fp_mul(T3, Y3, X1);
-	sm9_fp_sqr(Y3, Y3);
-	sm9_fp_div2(Y3, Y3);
-	sm9_fp_sqr(X3, T2);
-	sm9_fp_dbl(T1, T3);
-	sm9_fp_sub(X3, X3, T1);
-	sm9_fp_sub(T1, T3, X3);
-	sm9_fp_mul(T1, T1, T2);
-	sm9_fp_sub(Y3, T1, Y3);
+	sm9_fp_mul(Z3, Y3, Z1);//Z3 = 2*Y1*Z1
+	sm9_fp_sqr(Y3, Y3);// Y3 = 4*Y1^2
+	sm9_fp_mul(T3, Y3, X1);//T3 = 4*X1*Y1^2
+	sm9_fp_sqr(Y3, Y3);// Y3 = 16*Y1^4
+	sm9_fp_div2(Y3, Y3);// Y3 = 8*Y1^4
+
+	sm9_fp_sqr(X3, T2);// X3 = 9*X1^4
+	sm9_fp_dbl(T1, T3); // T1 = 8*X1*Y1^2
+	sm9_fp_sub(X3, X3, T1); //X3 = 9*X1^4 - 8*X1*Y1^2
+
+	sm9_fp_sub(T1, T3, X3); //T1 = 12*X1*Y1^2 - 9*X1^4
+	sm9_fp_mul(T1, T1, T2); // T1 = （12*X1*Y1^2 - 9*X1^4) * 3*X1^2
+	sm9_fp_sub(Y3, T1, Y3); // Y3 = （12*X1*Y1^2 - 9*X1^4） * 3*X1^2 - 8*Y1^4
 
 	sm9_fp_copy(R->X, X3);
 	sm9_fp_copy(R->Y, Y3);
@@ -1727,7 +1724,7 @@ void sm9_point_dbl(SM9_POINT *R, const SM9_POINT *P)
 }
 
 /*
- * 对于SM9使用的椭圆曲线 y^2 = x^3+b，有以下的公式
+ * 对于SM9使用的椭圆曲线 y^2 = x^3+ax+b，a = 0, b = 5, 有以下的公式
  * 利用 Jacobi一仿射混合系数做加法(X3,Y3, Z3) = (X1, Y1, Z1) + (X2, Y2, 1)的公式
  * 具体如下:A = X2*Z1^2, B = Y2*Z1^3, C = A-X1， D = B-Y1
  *    X3 = D^2-(C^3 +2X1*C^2)
@@ -1808,6 +1805,7 @@ void sm9_point_neg(SM9_POINT *R, const SM9_POINT *P)
 	sm9_fp_copy(R->Z, P->Z);
 }
 
+//点的减法
 void sm9_point_sub(SM9_POINT *R, const SM9_POINT *P, const SM9_POINT *Q)
 {
 	SM9_POINT _T, *T = &_T;
@@ -1815,6 +1813,7 @@ void sm9_point_sub(SM9_POINT *R, const SM9_POINT *P, const SM9_POINT *Q)
 	sm9_point_add(R, P, T);
 }
 
+//SM9的k倍点的计算
 void sm9_point_mul(SM9_POINT *R, const sm9_bn_t k, const SM9_POINT *P)
 {
 	char kbits[257];
@@ -2429,7 +2428,7 @@ void sm9_fn_sub(sm9_fn_t r, const sm9_fn_t a, const sm9_fn_t b)
 void sm9_fn_mul(sm9_fn_t r, const sm9_fn_t a, const sm9_fn_t b)
 {
 	uint64_t s[18];
-	sm9_barrett_bn_t zh, zl, q;
+	sm9_barrett_bn_t zl, q;
 	uint64_t w;
 	int i, j;
 
@@ -2451,7 +2450,7 @@ void sm9_fn_mul(sm9_fn_t r, const sm9_fn_t a, const sm9_fn_t b)
 	 * zh = z // (2^32)^7 = z[7..15] */
 	for (i = 0; i < 9; i++) {
 		zl[i] = s[i];
-		zh[i] = s[7 + i];
+		q[i] = s[7 + i];
 	}
 
 	/* q = zh * mu // (2^32)^9 */
@@ -2461,7 +2460,7 @@ void sm9_fn_mul(sm9_fn_t r, const sm9_fn_t a, const sm9_fn_t b)
 	for (i = 0; i < 9; i++) {
 		w = 0;
 		for (j = 0; j < 9; j++) {
-			w += s[i + j] + zh[i] * SM9_MU_N[j];
+			w += s[i + j] + q[i] * SM9_MU_N[j];
 			s[i + j] = w & 0xffffffff;
 			w >>= 32;
 		}
@@ -2487,12 +2486,9 @@ void sm9_fn_mul(sm9_fn_t r, const sm9_fn_t a, const sm9_fn_t b)
 	}*/
 
     //优化后的代码开始==================
-    for (i = 0; i < 8; i++) {
-        s[i] = 0;
-    }
     w = 0;
     for (j = 0; j < 8; j++) {
-        w += s[j] + q[0] * SM9_N[j];
+        w += q[0] * SM9_N[j];
         s[j] = w & 0xffffffff;
         w >>= 32;
     }
@@ -2541,7 +2537,8 @@ void sm9_fn_pow(sm9_fn_t r, const sm9_fn_t a, const sm9_bn_t e)
 	uint32_t w;
 	int i, j;
 
-	assert(sm9_bn_cmp(e, SM9_N_MINUS_ONE) < 0);
+    //一般不需要开启这个断言
+	//assert(sm9_bn_cmp(e, SM9_N_MINUS_ONE) < 0);
 
 	sm9_bn_set_one(t);
 	for (i = 7; i >= 0; i--) {
@@ -2558,9 +2555,7 @@ void sm9_fn_pow(sm9_fn_t r, const sm9_fn_t a, const sm9_bn_t e)
 
 void sm9_fn_inv(sm9_fn_t r, const sm9_fn_t a)
 {
-	sm9_fn_t e;
-	sm9_bn_sub(e, SM9_N, SM9_TWO);
-	sm9_fn_pow(r, a, e);
+	sm9_fn_pow(r, a, SM9_N_MINUS_TWO);
 }
 
 
@@ -2569,11 +2564,11 @@ void sm9_fn_inv(sm9_fn_t r, const sm9_fn_t a)
 void sm9_fn_from_hash(sm9_fn_t h, const uint8_t Ha[40])
 {
 	uint64_t s[18] = {0};
-	sm9_barrett_bn_t zh, zl, q;
+	sm9_barrett_bn_t zl, q;
 	uint64_t w;
 	int i, j;
 
-	/* s = Ha -> int */
+	/* s = Ha -> uint64_t */
 	for (i = 0; i < 10; i++) {
 		for (j = 0; j < 4; j++) {
 			s[i] <<= 8;
@@ -2585,7 +2580,7 @@ void sm9_fn_from_hash(sm9_fn_t h, const uint8_t Ha[40])
 	 * zh = z // (2^32)^7 = z[7..15] */
 	for (i = 0; i < 9; i++) {
 		zl[i] = s[i];
-		zh[i] = s[7 + i];
+		q[i] = s[7 + i];
 	}
 
 	/* q = zh * mu // (2^32)^9 */
@@ -2595,7 +2590,7 @@ void sm9_fn_from_hash(sm9_fn_t h, const uint8_t Ha[40])
 	for (i = 0; i < 9; i++) {
 		w = 0;
 		for (j = 0; j < 9; j++) {
-			w += s[i + j] + zh[i] * SM9_MU_N_MINUS_ONE[j]; //
+			w += s[i + j] + q[i] * SM9_MU_N_MINUS_ONE[j]; //
 			s[i + j] = w & 0xffffffff;
 			w >>= 32;
 		}
@@ -2621,12 +2616,9 @@ void sm9_fn_from_hash(sm9_fn_t h, const uint8_t Ha[40])
 	}*/
 
     //优化后的代码开始==================
-    for (i = 0; i < 8; i++) {
-        s[i] = 0;
-    }
     w = 0;
     for (j = 0; j < 8; j++) {
-        w += s[j] + q[0] * SM9_N_MINUS_ONE[j];
+        w += q[0] * SM9_N_MINUS_ONE[j];
         s[j] = w & 0xffffffff;
         w >>= 32;
     }
@@ -2714,6 +2706,7 @@ int sm9_point_from_uncompressed_octets(SM9_POINT *P, const uint8_t octets[65])
 	return 1;
 }
 
+//把扭曲线点转为非压缩的octet字符字符串
 int sm9_twist_point_to_uncompressed_octets(const SM9_TWIST_POINT *P, uint8_t octets[129])
 {
 	octets[0] = 0x04;

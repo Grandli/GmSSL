@@ -158,6 +158,7 @@ err:
 	return -1;
 }
 
+//基于sm2签名的编码
 int x509_req_sign_to_der(
 	int version,
 	const uint8_t *subject, size_t subject_len,

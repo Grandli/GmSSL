@@ -37,7 +37,7 @@ void PrePareSM9Test()
     sm9_enc_master_public_key_from_der(&master_public, &cp, &len);
 }
 
-#define OneTimeTestAmount  128
+#define OneTimeTestAmount  1024
 unsigned int DoSm9Test() {
     const char *id = "Alice";
     //明文数据
