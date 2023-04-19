@@ -119,7 +119,7 @@ void sm9_bn_to_bytes(const sm9_bn_t a, uint8_t out[32])
 	int i;
 	for (i = 7; i >= 0; i--) {
 		PUTU32(out, (uint32_t)a[i]);
-		out += 4;//sizeof(uint32_t);
+		out += sizeof(uint32_t);
 	}
 }
 
@@ -128,7 +128,7 @@ void sm9_bn_from_bytes(sm9_bn_t r, const uint8_t in[32])
 	int i;
 	for (i = 7; i >= 0; i--) {
 		r[i] = GETU32(in);
-		in += 4;//sizeof(uint32_t);
+		in += sizeof(uint32_t);
 	}
 }
 
@@ -1668,6 +1668,11 @@ int sm9_point_is_on_curve(const SM9_POINT *P)
 	}
 
 	if (sm9_fp_equ(t0, t1) != 1) {
+//        sm9_bn_print(stderr, 0, 4, "X", P->X);
+//        sm9_bn_print(stderr, 0, 4, "Y", P->Y);
+//        sm9_bn_print(stderr, 0, 4, "t0", t0);
+//        sm9_bn_print(stderr, 0, 4, "t1", t1);
+//        sm9_bn_print(stderr, 0, 4, "SM9_P", SM9_P);
 		error_print();
 		return 0;
 	}
@@ -2697,6 +2702,8 @@ int sm9_point_from_uncompressed_octets(SM9_POINT *P, const uint8_t octets[65])
 	memset(P, 0, sizeof(*P));
 	sm9_bn_from_bytes(P->X, octets + 1);
 	sm9_bn_from_bytes(P->Y, octets + 32 + 1);
+
+
 	sm9_fp_set_one(P->Z);
     //验证点是否是在曲线上
 	if (!sm9_point_is_on_curve(P)) {

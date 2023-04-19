@@ -157,7 +157,7 @@ typedef enum {
 
 const char *tls_record_type_name(int type);
 
-
+//TLS握手协议类型
 typedef enum  {
 	TLS_handshake_hello_request		= 0,
 	TLS_handshake_client_hello		= 1,
@@ -185,7 +185,7 @@ typedef enum  {
 
 const char *tls_handshake_type_name(int type);
 
-
+//TLS证书类型
 typedef enum {
 	TLS_cert_type_rsa_sign			= 1,
 	TLS_cert_type_dss_sign			= 2,
@@ -205,6 +205,7 @@ typedef enum {
 const char *tls_cert_type_name(int type);
 int tls_cert_type_from_oid(int oid);
 
+//TLS的扩展类型
 typedef enum {
 	TLS_extension_server_name		= 0,
 	TLS_extension_max_fragment_length	= 1,

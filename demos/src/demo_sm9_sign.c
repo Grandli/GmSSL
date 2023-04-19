@@ -34,7 +34,7 @@ void PrePareSM9SignTest()
 
 }
 
-#define OneTimeTestAmount  10*1024
+#define OneTimeTestAmount  256
 unsigned int DoSm9SignTest() {
     SM9_SIGN_CTX sign_ctx;
     const char *id = "Alice";
@@ -47,7 +47,11 @@ unsigned int DoSm9SignTest() {
 
     sm9_sign_init(&sign_ctx);
     sm9_sign_update(&sign_ctx, (uint8_t *) message, messageLen);
-    sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen);
+    ret = sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen);
+    if(ret!=1)
+    {
+        return 0;
+    }
 
     //format_bytes(stdout, 0, 0, "signature", sig, siglen);
 
@@ -55,6 +59,10 @@ unsigned int DoSm9SignTest() {
     sm9_verify_init(&sign_ctx);
     sm9_verify_update(&sign_ctx, (uint8_t *) message, messageLen);
     ret = sm9_verify_finish(&sign_ctx, sig, siglen, &sign_master_public, id, strlen(id));
+    if(ret!=1)
+    {
+        return 0;
+    }
     //printf("verify %s\n", ret == 1 ? "success" : "failure");
 
     return OneTimeTestAmount;

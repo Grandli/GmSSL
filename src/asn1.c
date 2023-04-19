@@ -148,7 +148,7 @@ int asn1_length_to_der(size_t len, uint8_t **out, size_t *outlen)
 	}
 
     //长度小于128
-	if (len&0x80 == 0) {
+	if (len<128) {
 		if (out && *out) {
 			*(*out)++ = (uint8_t)len;
 		}
@@ -186,7 +186,7 @@ int asn1_length_from_der(size_t *len, const uint8_t **in, size_t *inlen)
 		return -1;
 	}
 
-	if ((**in)&0x80 == 0) {
+	if ((**in)<128) {
 		*len = *(*in)++;
 		(*inlen)--;
 

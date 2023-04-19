@@ -44,6 +44,7 @@ static uint32_t CK[32] = {
 	x4 = x0 ^ L32_(x4);			\
 	*(rk + 31 - i) = x4
 
+//设置加密密钥
 void sm4_set_encrypt_key(SM4_KEY *key, const uint8_t user_key[16])
 {
 	uint32_t *rk = key->rk;
@@ -61,6 +62,7 @@ void sm4_set_encrypt_key(SM4_KEY *key, const uint8_t user_key[16])
 	x0 = x1 = x2 = x3 = x4 = 0;
 }
 
+//设置解密密钥
 void sm4_set_decrypt_key(SM4_KEY *key, const uint8_t user_key[16])
 {
 	uint32_t *rk = key->rk;
