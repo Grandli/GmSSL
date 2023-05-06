@@ -272,7 +272,7 @@ void sm9_fp12_pow(sm9_fp12_t r, const sm9_fp12_t a, const sm9_bn_t k);
 void sm9_fp12_to_bytes(const sm9_fp12_t a, uint8_t buf[32 * 12]);
 int  sm9_fp12_from_bytes(sm9_fp12_t r, const uint8_t in[32 * 12]);
 void sm9_fp12_to_hex(const sm9_fp12_t a, char hex[65 * 12]);
-int  sm9_fp12_from_hex(sm9_fp12_t r, const char hex[65 * 12]); // 这个明显是不对的
+int  sm9_fp12_from_hex(sm9_fp12_t r, const char hex[65 * 12]);
 void sm9_fp12_print(const char *prefix, const sm9_fp12_t a);
 
 
@@ -406,6 +406,8 @@ typedef struct {
 	SM9_POINT ds; //用户私钥
 } SM9_SIGN_KEY;
 
+typedef SM9_TWIST_POINT SM9_SIGN_PUBLIC_KEY;
+
 int sm9_sign_master_key_generate(SM9_SIGN_MASTER_KEY *master);
 int sm9_sign_master_key_extract_key(SM9_SIGN_MASTER_KEY *master, const char *id, size_t idlen, SM9_SIGN_KEY *key);
 
@@ -448,8 +450,12 @@ typedef struct {
 	SM9_POINT S;// S = ((r - h) mod N)*ds  其中r为随机数，ds为用户私钥
 } SM9_SIGNATURE;
 
-int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *sig);
-int sm9_do_verify(const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen, const SM3_CTX *sm3_ctx, const SM9_SIGNATURE *sig);
+//签名验签的预运算
+//为了兼容不同的SM9主密钥系统，使用preComputeFlg来处理，支持5个不同系统的运算
+int sm9_sign_reCompute(SM9_SIGN_PUBLIC_KEY signPub, int preComputeFlg);
+
+int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *sig, int preCompute);
+int sm9_do_verify(const SM9_SIGN_PUBLIC_KEY *signPublicKey, const char *id, size_t idlen, const SM3_CTX *sm3_ctx, const SM9_SIGNATURE *sig, int preCompute);
 
 #define SM9_SIGNATURE_SIZE 104
 int sm9_signature_to_der(const SM9_SIGNATURE *sig, uint8_t **out, size_t *outlen);
@@ -458,15 +464,16 @@ int sm9_signature_print(FILE *fp, int fmt, int ind, const char *label, const uin
 
 typedef struct {
 	SM3_CTX sm3_ctx;
+    int preCompute;
 } SM9_SIGN_CTX;
 
-int sm9_sign_init(SM9_SIGN_CTX *ctx);
+int sm9_sign_init(SM9_SIGN_CTX *ctx, int preCompute);
 int sm9_sign_update(SM9_SIGN_CTX *ctx, const uint8_t *data, size_t datalen);
 int sm9_sign_finish(SM9_SIGN_CTX *ctx, const SM9_SIGN_KEY *key, uint8_t *sig, size_t *siglen);
-int sm9_verify_init(SM9_SIGN_CTX *ctx);
+int sm9_verify_init(SM9_SIGN_CTX *ctx, int preCompute);
 int sm9_verify_update(SM9_SIGN_CTX *ctx, const uint8_t *data, size_t datalen);
 int sm9_verify_finish(SM9_SIGN_CTX *ctx, const uint8_t *sig, size_t siglen,
-	const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen);
+	const SM9_SIGN_PUBLIC_KEY *signPublicKey, const char *id, size_t idlen);
 
 
 /*
@@ -487,10 +494,14 @@ typedef struct {
 	sm9_fn_t ke; //加密主私钥
 } SM9_ENC_MASTER_KEY;
 
+
 typedef struct {
 	SM9_POINT Ppube; // 加密主公钥
 	SM9_TWIST_POINT de; // 用户解密私钥
 } SM9_ENC_KEY;
+
+
+typedef SM9_POINT SM9_ENC_PUBLIC_KEY;
 
 int sm9_enc_master_key_generate(SM9_ENC_MASTER_KEY *master);
 int sm9_enc_master_key_extract_key(SM9_ENC_MASTER_KEY *master, const char *id, size_t idlen, SM9_ENC_KEY *key);
@@ -535,10 +546,14 @@ SM9Cipher ::= SEQUENCE {
 	CipherText	OCTET STRING }
 */
 
-int sm9_kem_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen, size_t klen, uint8_t *kbuf, SM9_POINT *C);
+//sm9加解密的预运算
+//为了兼容不同的SM9主密钥系统，使用preComputeFlg来处理，支持5个不同系统的运算
+int sm9_enc_reCompute(SM9_ENC_PUBLIC_KEY encPub, int preComputeFlg);
+
+int sm9_kem_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size_t idlen, size_t klen, uint8_t *kbuf, SM9_POINT *C, int preCompute);
 int sm9_kem_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen, const SM9_POINT *C, size_t klen, uint8_t *kbuf);
-int sm9_do_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
-	const uint8_t *in, size_t inlen, SM9_POINT *C1, uint8_t *c2, uint8_t c3[SM3_HMAC_SIZE]);
+int sm9_do_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size_t idlen,
+	const uint8_t *in, size_t inlen, SM9_POINT *C1, uint8_t *c2, uint8_t c3[SM3_HMAC_SIZE], int preCompute);
 int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	const SM9_POINT *C1, const uint8_t *c2, size_t c2len, const uint8_t c3[SM3_HMAC_SIZE], uint8_t *out);
 
@@ -549,8 +564,8 @@ int sm9_ciphertext_to_der(const SM9_POINT *C1, const uint8_t *c2, size_t c2len,
 int sm9_ciphertext_from_der(SM9_POINT *C1, const uint8_t **c2, size_t *c2len,
 	const uint8_t **c3, const uint8_t **in, size_t *inlen);
 int sm9_ciphertext_print(FILE *fp, int fmt, int ind, const char *label, const uint8_t *a, size_t alen);
-int sm9_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
-	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen);
+int sm9_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size_t idlen,
+	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen, int preCompute);
 int sm9_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen);
 

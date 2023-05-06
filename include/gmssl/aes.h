@@ -19,7 +19,7 @@
 extern "C" {
 #endif
 
-
+//三种AES密钥长度
 #define AES128_KEY_BITS		128
 #define AES192_KEY_BITS		192
 #define AES256_KEY_BITS		256
@@ -28,6 +28,7 @@ extern "C" {
 #define AES192_KEY_SIZE		(AES192_KEY_BITS/8)
 #define AES256_KEY_SIZE		(AES256_KEY_BITS/8)
 
+//分组长度
 #define AES_BLOCK_SIZE		16
 
 #define AES128_ROUNDS		10

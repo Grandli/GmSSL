@@ -648,7 +648,7 @@ static int sm9_private_key_info_decrypt_from_der(int *alg, int *params, uint8_t 
 	const uint8_t *cp = pkey_info;
 	size_t pkey_info_len;
 	const uint8_t *cp_prikey;
-
+    //从pkcs8格式中获取相关数据
 	if (pkcs8_enced_private_key_info_from_der(&salt, &saltlen, &iter, &keylen, &prf,
 		&cipher, &iv, &ivlen, &enced_pkey_info, &enced_pkey_info_len, in, inlen) != 1
 		|| asn1_check(keylen == -1 || keylen == 16) != 1
@@ -659,11 +659,13 @@ static int sm9_private_key_info_decrypt_from_der(int *alg, int *params, uint8_t 
 		error_print();
 		return -1;
 	}
+    //根据pass和盐值等得到sm4派生密钥 key
 	if (pbkdf2_genkey(DIGEST_sm3(), pass, strlen(pass), salt, saltlen, iter, sizeof(key), key) != 1) {
 		error_print();
 		goto end;
 	}
 	sm4_set_decrypt_key(&sm4_key, key);
+    //对加密的密钥
 	if (sm4_cbc_padding_decrypt(&sm4_key, iv, enced_pkey_info, enced_pkey_info_len,
 			pkey_info, &pkey_info_len) != 1
 		|| sm9_private_key_info_from_der(alg, params, &cp_prikey, prikey_len, // 注意这里的是const uint8_t *，必须拷贝到外面
@@ -993,6 +995,7 @@ int sm9_enc_key_info_encrypt_to_der(const SM9_ENC_KEY *key, const char *pass, ui
 	return 1;
 }
 
+//通过口令从der编码数据中获取sm9加密私钥
 int sm9_enc_key_info_decrypt_from_der(SM9_ENC_KEY *key, const char *pass, const uint8_t **in, size_t *inlen)
 {
 	int ret = -1;
@@ -1041,6 +1044,7 @@ int sm9_enc_key_info_encrypt_to_pem(const SM9_ENC_KEY *key, const char *pass, FI
 	return 1;
 }
 
+//通过口令从der编码的pem文件获取sm9加密私钥
 int sm9_enc_key_info_decrypt_from_pem(SM9_ENC_KEY *key, const char *pass, FILE *fp)
 {
 	uint8_t buf[SM9_MAX_ENCED_PRIVATE_KEY_INFO_SIZE];

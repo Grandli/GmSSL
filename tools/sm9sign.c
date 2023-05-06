@@ -93,7 +93,7 @@ bad:
 		return -1;
 	}
 
-	if (sm9_sign_init(&ctx) != 1) {
+	if (sm9_sign_init(&ctx, 0) != 1) {
 		error_print();
 		goto end;
 	}

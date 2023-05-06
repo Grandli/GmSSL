@@ -96,7 +96,7 @@ bad:
 		goto end;
 	}
 
-	if (sm9_verify_init(&ctx) != 1) {
+	if (sm9_verify_init(&ctx, 0) != 1) {
 		error_print();
 		goto end;
 	}

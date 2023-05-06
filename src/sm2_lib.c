@@ -221,6 +221,7 @@ int sm2_signature_print(FILE *fp, int fmt, int ind, const char *label, const uin
 	return 1;
 }
 
+//sm2签名接口
 int sm2_sign(const SM2_KEY *key, const uint8_t dgst[32], uint8_t *sigbuf, size_t *siglen)
 {
 	SM2_SIGNATURE sig;
@@ -251,9 +252,9 @@ int sm2_sign_fixlen(const SM2_KEY *key, const uint8_t dgst[32], size_t siglen, u
 	size_t len;
 
 	switch (siglen) {
-	case SM2_signature_compact_size:
-	case SM2_signature_typical_size:
-	case SM2_signature_max_size:
+	case SM2_signature_compact_size://70
+	case SM2_signature_typical_size://71
+	case SM2_signature_max_size://72
 		break;
 	default:
 		error_print();
@@ -276,7 +277,7 @@ int sm2_sign_fixlen(const SM2_KEY *key, const uint8_t dgst[32], size_t siglen, u
 	return -1;
 }
 
-//sm2验签
+//sm2验签接口
 int sm2_verify(const SM2_KEY *key, const uint8_t dgst[32], const uint8_t *sigbuf, size_t siglen)
 {
 	SM2_SIGNATURE sig;
@@ -337,6 +338,7 @@ int sm2_compute_z(uint8_t z[32], const SM2_POINT *pub, const char *id, size_t id
 	return 1;
 }
 
+//签名初始化：开始哈希运算，并计算z值
 int sm2_sign_init(SM2_SIGN_CTX *ctx, const SM2_KEY *key, const char *id, size_t idlen)
 {
 	if (!ctx || !key) {
@@ -358,6 +360,7 @@ int sm2_sign_init(SM2_SIGN_CTX *ctx, const SM2_KEY *key, const char *id, size_t 
 	return 1;
 }
 
+//签名处理数据：哈希处理数据运算
 int sm2_sign_update(SM2_SIGN_CTX *ctx, const uint8_t *data, size_t datalen)
 {
 	if (!ctx) {
@@ -370,6 +373,7 @@ int sm2_sign_update(SM2_SIGN_CTX *ctx, const uint8_t *data, size_t datalen)
 	return 1;
 }
 
+//完成签名运算：完成哈希运算，并对哈希值进行签名运算
 int sm2_sign_finish(SM2_SIGN_CTX *ctx, uint8_t *sig, size_t *siglen)
 {
 	uint8_t dgst[SM3_DIGEST_SIZE];
@@ -386,6 +390,7 @@ int sm2_sign_finish(SM2_SIGN_CTX *ctx, uint8_t *sig, size_t *siglen)
 	return 1;
 }
 
+//完成签名运算（需要返回固定长度siglen的签名值）：完成哈希运算，并对哈希值进行签名运算
 int sm2_sign_finish_fixlen(SM2_SIGN_CTX *ctx, size_t siglen, uint8_t *sig)
 {
 	uint8_t dgst[SM3_DIGEST_SIZE];
@@ -402,6 +407,7 @@ int sm2_sign_finish_fixlen(SM2_SIGN_CTX *ctx, size_t siglen, uint8_t *sig)
 	return 1;
 }
 
+//验签初始化：开始哈希运算，并计算z值
 int sm2_verify_init(SM2_SIGN_CTX *ctx, const SM2_KEY *key, const char *id, size_t idlen)
 {
 	if (!ctx || !key) {
@@ -424,6 +430,7 @@ int sm2_verify_init(SM2_SIGN_CTX *ctx, const SM2_KEY *key, const char *id, size_
 	return 1;
 }
 
+//验签处理数据：哈希处理数据运算
 int sm2_verify_update(SM2_SIGN_CTX *ctx, const uint8_t *data, size_t datalen)
 {
 	if (!ctx) {
@@ -436,6 +443,7 @@ int sm2_verify_update(SM2_SIGN_CTX *ctx, const uint8_t *data, size_t datalen)
 	return 1;
 }
 
+//完成验签运算：完成哈希运算，并对哈希值进行验签运算
 int sm2_verify_finish(SM2_SIGN_CTX *ctx, const uint8_t *sig, size_t siglen)
 {
 	uint8_t dgst[SM3_DIGEST_SIZE];
@@ -554,6 +562,7 @@ retry:
 	return 1;
 }
 
+//进行sm2加密运算（C1的椭圆点的x，y坐标的asn1编码长度要固定为 point_size）
 int sm2_do_encrypt_fixlen(const SM2_KEY *key, const uint8_t *in, size_t inlen, int point_size, SM2_CIPHERTEXT *out)
 {
 	unsigned int trys = 200;
@@ -570,9 +579,9 @@ int sm2_do_encrypt_fixlen(const SM2_KEY *key, const uint8_t *in, size_t inlen, i
 	}
 
 	switch (point_size) {
-	case SM2_ciphertext_compact_point_size:
-	case SM2_ciphertext_typical_point_size:
-	case SM2_ciphertext_max_point_size:
+	case SM2_ciphertext_compact_point_size://68
+	case SM2_ciphertext_typical_point_size://69
+	case SM2_ciphertext_max_point_size://70
 		break;
 	default:
 		error_print();
@@ -603,6 +612,7 @@ retry:
 		size_t len = 0;
 		asn1_integer_to_der(out->point.x, 32, NULL, &len);
 		asn1_integer_to_der(out->point.y, 32, NULL, &len);
+        //保证 固定的编码长度 的 [k]G 进行输出 （由于asn1的编码规则的原因，可能有1个字节的差异）
 		if (len != point_size) {
 			trys--;
 			goto retry;
@@ -642,6 +652,7 @@ retry:
 	return 1;
 }
 
+//进行sm2解密运算
 int sm2_do_decrypt(const SM2_KEY *key, const SM2_CIPHERTEXT *in, uint8_t *out, size_t *outlen)
 {
 	int ret = -1;
@@ -776,6 +787,7 @@ int sm2_ciphertext_from_der(SM2_CIPHERTEXT *C, const uint8_t **in, size_t *inlen
 	return 1;
 }
 
+//调试时：用于打印sm2密文
 int sm2_ciphertext_print(FILE *fp, int fmt, int ind, const char *label, const uint8_t *a, size_t alen)
 {
 	uint8_t buf[512] = {0};
@@ -795,6 +807,7 @@ int sm2_ciphertext_print(FILE *fp, int fmt, int ind, const char *label, const ui
 	return 1;
 }
 
+//sm2加密接口
 int sm2_encrypt(const SM2_KEY *key, const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen)
 {
 	SM2_CIPHERTEXT C;
@@ -820,6 +833,7 @@ int sm2_encrypt(const SM2_KEY *key, const uint8_t *in, size_t inlen, uint8_t *ou
 	return 1;
 }
 
+//sm2加密接口（需要保证：C1的椭圆点的x，y坐标的asn1编码长度要固定为 point_size）
 int sm2_encrypt_fixlen(const SM2_KEY *key, const uint8_t *in, size_t inlen, int point_size, uint8_t *out, size_t *outlen)
 {
 	SM2_CIPHERTEXT C;
@@ -845,6 +859,7 @@ int sm2_encrypt_fixlen(const SM2_KEY *key, const uint8_t *in, size_t inlen, int 
 	return 1;
 }
 
+//sm2解密接口
 int sm2_decrypt(const SM2_KEY *key, const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen)
 {
 	SM2_CIPHERTEXT C;
@@ -865,6 +880,7 @@ int sm2_decrypt(const SM2_KEY *key, const uint8_t *in, size_t inlen, uint8_t *ou
 	return 1;
 }
 
+//进行sm2的ecdh运算
 int sm2_do_ecdh(const SM2_KEY *key, const SM2_POINT *peer_public, SM2_POINT *out)
 {
 	/*
@@ -880,6 +896,7 @@ int sm2_do_ecdh(const SM2_KEY *key, const SM2_POINT *peer_public, SM2_POINT *out
 	return 1;
 }
 
+//sm2的ecdh接口
 int sm2_ecdh(const SM2_KEY *key, const uint8_t *peer_public, size_t peer_public_len, SM2_POINT *out)
 {
 	SM2_POINT point;

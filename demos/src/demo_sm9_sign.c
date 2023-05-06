@@ -32,6 +32,8 @@ void PrePareSM9SignTest()
     sm9_sign_master_public_key_to_der(&sign_master, &p, &len);
     sm9_sign_master_public_key_from_der(&sign_master_public, &cp, &len);
 
+    sm9_sign_reCompute(sign_master.Ppubs, 1);
+
 }
 
 #define OneTimeTestAmount  256
@@ -45,7 +47,7 @@ unsigned int DoSm9SignTest() {
     size_t siglen;
     int ret;
 
-    sm9_sign_init(&sign_ctx);
+    sm9_sign_init(&sign_ctx, 1);
     sm9_sign_update(&sign_ctx, (uint8_t *) message, messageLen);
     ret = sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen);
     if(ret!=1)
@@ -56,9 +58,9 @@ unsigned int DoSm9SignTest() {
     //format_bytes(stdout, 0, 0, "signature", sig, siglen);
 
 
-    sm9_verify_init(&sign_ctx);
+    sm9_verify_init(&sign_ctx, 1);
     sm9_verify_update(&sign_ctx, (uint8_t *) message, messageLen);
-    ret = sm9_verify_finish(&sign_ctx, sig, siglen, &sign_master_public, id, strlen(id));
+    ret = sm9_verify_finish(&sign_ctx, sig, siglen, &(sign_master_public.Ppubs), id, strlen(id));
     if(ret!=1)
     {
         return 0;
@@ -71,7 +73,10 @@ unsigned int DoSm9SignTest() {
 int main(void)
 {
     PrePareSM9SignTest();
-    demoDoUtilTest(DoSm9SignTest, 1, "sm9Sign");
+    int i = 0;
+    for(i=0;i<3;i++) {
+        demoDoUtilTest(DoSm9SignTest, 1, "sm9Sign");
+    }
 
 
 	return 0;

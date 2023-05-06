@@ -923,7 +923,7 @@ int sm2_jacobian_point_is_on_curve(const SM2_JACOBIAN_POINT *P)
 
 	if (sm2_bn_cmp(t0, t1) != 0) {
 		error_print();
-		return -1;
+		return 0;
 	}
 	return 1;
 }

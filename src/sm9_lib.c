@@ -45,6 +45,7 @@ int sm9_signature_to_der(const SM9_SIGNATURE *sig, uint8_t **out, size_t *outlen
 	return 1;
 }
 
+//从der编码数据获取SM9签名数据
 int sm9_signature_from_der(SM9_SIGNATURE *sig, const uint8_t **in, size_t *inlen)
 {
 	int ret;
@@ -75,25 +76,46 @@ int sm9_signature_from_der(SM9_SIGNATURE *sig, const uint8_t **in, size_t *inlen
 	return 1;
 }
 
-int sm9_sign_init(SM9_SIGN_CTX *ctx)
+char sign_preHex[5][65 * 12];
+//为了兼容不同的SM9主密钥系统，使用preComputeFlg来处理，支持5个不同系统的运算
+int sm9_sign_reCompute(SM9_SIGN_PUBLIC_KEY signPub, int preComputeFlg)
+{
+    sm9_fp12_t g;
+    //只支持5个（0表示不进行预运算）
+    if(preComputeFlg<=0||preComputeFlg>5)
+    {
+        error_print();
+        return -1;
+    }
+    // g = e(P1, Ppubs) (for sign)
+    sm9_pairing(g, &signPub, SM9_P1);
+    sm9_fp12_to_hex(g, sign_preHex[preComputeFlg-1]);
+    return preComputeFlg;
+}
+
+//初始化签名上下文
+int sm9_sign_init(SM9_SIGN_CTX *ctx, int preCompute)
 {
 	const uint8_t prefix[1] = { SM9_HASH2_PREFIX };
 	sm3_init(&ctx->sm3_ctx);
+    ctx->preCompute = preCompute;
 	sm3_update(&ctx->sm3_ctx, prefix, sizeof(prefix));
 	return 1;
 }
 
+//签名处理hash数据
 int sm9_sign_update(SM9_SIGN_CTX *ctx, const uint8_t *data, size_t datalen)
 {
 	sm3_update(&ctx->sm3_ctx, data, datalen);
 	return 1;
 }
 
+//完成数据签名
 int sm9_sign_finish(SM9_SIGN_CTX *ctx, const SM9_SIGN_KEY *key, uint8_t *sig, size_t *siglen)
 {
 	SM9_SIGNATURE signature;
 
-	if (sm9_do_sign(key, &ctx->sm3_ctx, &signature) != 1) {
+	if (sm9_do_sign(key, &ctx->sm3_ctx, &signature, ctx->preCompute) != 1) {
 		error_print();
 		return -1;
 	}
@@ -106,7 +128,8 @@ int sm9_sign_finish(SM9_SIGN_CTX *ctx, const SM9_SIGN_KEY *key, uint8_t *sig, si
 	return 1;
 }
 
-int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *sig)
+//SM9签名运算
+int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *sig, int preCompute)
 {
 	sm9_fn_t r;
 	sm9_fp12_t g;
@@ -118,7 +141,15 @@ int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *
 	uint8_t Ha[64];
 
 	// A1: g = e(P1, Ppubs)
-	sm9_pairing(g, &key->Ppubs, SM9_P1);
+    if(preCompute==0)
+    {
+        sm9_pairing(g, &key->Ppubs, SM9_P1);
+    }
+    else
+    {
+        sm9_fp12_from_hex(g, sign_preHex[preCompute-1]);
+    }
+
 
 	do {
 		// A2: rand r in [1, N-1]
@@ -159,10 +190,11 @@ int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *
 }
 
 //开始SM9验签
-int sm9_verify_init(SM9_SIGN_CTX *ctx)
+int sm9_verify_init(SM9_SIGN_CTX *ctx, int preCompute)
 {
 	const uint8_t prefix[1] = { SM9_HASH2_PREFIX };
 	sm3_init(&ctx->sm3_ctx);
+    ctx->preCompute = preCompute;
 	sm3_update(&ctx->sm3_ctx, prefix, sizeof(prefix));
 	return 1;
 }
@@ -176,7 +208,7 @@ int sm9_verify_update(SM9_SIGN_CTX *ctx, const uint8_t *data, size_t datalen)
 
 //完成SM9验签运算
 int sm9_verify_finish(SM9_SIGN_CTX *ctx, const uint8_t *sig, size_t siglen,
-	const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen)
+	const SM9_SIGN_PUBLIC_KEY *signPublicKey, const char *id, size_t idlen)
 {
 	int ret;
 	SM9_SIGNATURE signature;
@@ -187,15 +219,16 @@ int sm9_verify_finish(SM9_SIGN_CTX *ctx, const uint8_t *sig, size_t siglen,
 		return -1;
 	}
 
-	if ((ret = sm9_do_verify(mpk, id, idlen, &ctx->sm3_ctx, &signature)) < 0) {
+	if ((ret = sm9_do_verify(signPublicKey, id, idlen, &ctx->sm3_ctx, &signature, ctx->preCompute)) < 0) {
 		error_print();
 		return -1;
 	}
 	return ret;
 }
 
-int sm9_do_verify(const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen,
-	const SM3_CTX *sm3_ctx, const SM9_SIGNATURE *sig)
+//SM9验签运算
+int sm9_do_verify(const SM9_SIGN_PUBLIC_KEY *signPublicKey, const char *id, size_t idlen,
+	const SM3_CTX *sm3_ctx, const SM9_SIGNATURE *sig, int preCompute)
 {
 	sm9_fn_t h1;
 	sm9_fn_t h2;
@@ -226,7 +259,14 @@ int sm9_do_verify(const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen,
     }
 
 	// B3: g = e(P1, Ppubs)
-	sm9_pairing(g, &mpk->Ppubs, SM9_P1);
+    if(preCompute==0)
+    {
+        sm9_pairing(g, signPublicKey, SM9_P1);
+    }
+    else
+    {
+        sm9_fp12_from_hex(g, sign_preHex[preCompute-1]);
+    }
 
 	// B4: t = g^h
 	sm9_fp12_pow(t, g, sig->h);
@@ -236,7 +276,7 @@ int sm9_do_verify(const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen,
 
 	// B6: P = h1 * P2 + Ppubs
 	sm9_twist_point_mul_generator(&P, h1);
-	sm9_twist_point_add_full(&P, &P, &mpk->Ppubs);
+	sm9_twist_point_add_full(&P, &P, signPublicKey);
 
 	// B7: u = e(S, P)
 	sm9_pairing(u, &P, &sig->S);
@@ -260,21 +300,28 @@ int sm9_do_verify(const SM9_SIGN_MASTER_KEY *mpk, const char *id, size_t idlen,
 	return 1;
 }
 
-//static const char gHexData[1024] = "3796f1f15d130464d27163fb01d7018dfb2704d0261f7899ab6b8eed93adab38\n"
-//                                   "15a1863c91be234b6795b5b13f7f6e2156df8d3bc53866992dec7875b3d3ea61\n"
-//                                   "30efa0d4baefefd5326db34e90c72b001e4194e9326dbf190f6f4818f08a068e\n"
-//                                   "5e387f424631303b30e510fb1251c902239ecd4a23a00635108b05354f9fef73\n"
-//                                   "282499cf2968150101e04333c2b3c192b4a9c2f25cff9895cda200014069fe30\n"
-//                                   "35805a415ddd74353a42ca3cd2a867c75d32643609ee34c051ddb610d5237c24\n"
-//                                   "a6bc6b8c54c8a8455a97c742c9ab7e5800c38002c585a7dd52f87b099e60134f\n"
-//                                   "3c4cbdcb64afb12d4cd69aa6c550bd87ba19ea3405a2ac19023544d5cc446f17\n"
-//                                   "342d38832f92c39e5082cb59afd5456375240e623ddaa615361a74f65bf7ec62\n"
-//                                   "835b9c1daa663f04c523f882c032e1d47484aa429f8a3012ec9e4eb2d9f31eda\n"
-//                                   "a2b5e2aff8df4265b9c7f742f05a1a4b4f85237f0d91ee96f9646f33b01096b0\n"
-//                                   "a7ee7315a291abd89facb618de51824497aab6bdd47ca0b2c62e1a7a130cc926";
+char enc_preHex[5][65 * 12];
+//sm9加解密的预运算
+//为了兼容不同的SM9主密钥系统，使用preComputeFlg来处理，支持5个不同系统的运算
+int sm9_enc_reCompute(SM9_ENC_PUBLIC_KEY encPub, int preComputeFlg)
+{
+    sm9_fp12_t g;
+    //只支持5个（0表示不进行预运算）
+    if(preComputeFlg<=0||preComputeFlg>5)
+    {
+        error_print();
+        return -1;
+    }
+    //  g = e(Ppube, P2) for enc
+    sm9_pairing(g, SM9_P2, &encPub);
+    sm9_fp12_to_hex(g, enc_preHex[preComputeFlg-1]);
 
-int sm9_kem_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
-	size_t klen, uint8_t *kbuf, SM9_POINT *C)
+    return preComputeFlg;
+}
+
+//SM9加密封装密钥计算
+int sm9_kem_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size_t idlen,
+	size_t klen, uint8_t *kbuf, SM9_POINT *C, int preCompute)
 {
 	sm9_fn_t r;
 	sm9_fp12_t g;
@@ -286,28 +333,7 @@ int sm9_kem_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	// A1: Q = H1(ID||hid,N) * P1 + Ppube
 	sm9_hash1(r, id, idlen, SM9_HID_ENC);
 	sm9_point_mul(C, r, SM9_P1);
-	sm9_point_add(C, C, &mpk->Ppube);
-
-    //uint8_t tempBuf[65]={0x04,0x12,0xB3,0x4B,0x71,0x22,0x2A,0x25,0xC8,0x0A,0xE1,0x29,0x75,0xDF,0x2D,0x34,0xD9,0x2D,0xD1,0x25,0x5A,0x2E,0xC5,0x74,0xE5,0xF6,0x13,0x5B,0x4E,0xA7,0x3F,0xA4,
-    //           0xD4,0x08,0x47,0x3B,0x79,0xD1,0x04,0xD6,0x0E,0xBE,0xBC,0xB3,0x84,0xB0,0x8B,0x92,0x6D,0xA5,0xBC,0xEE,0x9A,0xB2,0x60,0x0E,0xAD,0x09,0x36,0x0D,0xA7,0x31,0x2F,0xCB,
-    //           0x9E};
-    //sm9_point_to_uncompressed_octets(C, tempBuf);
-    //printf("Q = \n");
-    //print_bytes(tempBuf, 65);
-
-    //sm9_point_from_uncompressed_octets(C, tempBuf);
-
-    //sm9双线性对运算
-    //    sm9_pairing(g, SM9_P2, &mpk->Ppube);
-    //    char tempBuf[1024]="";
-    //    sm9_fp12_to_hex(g, tempBuf);
-    //    printf("g = %s\n", tempBuf);
-    //    char tempBuf[1024]="";
-    //    sm9_fp12_to_hex(g, tempBuf);
-    //    printf("g = %s\n", tempBuf);
-
-    //    sm9_fp12_from_hex(g, gHexData);
-
+	sm9_point_add(C, C, encPublicKey);
 
 	do {
 		// A2: rand r in [1, N-1]
@@ -322,7 +348,15 @@ int sm9_kem_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 		sm9_point_to_uncompressed_octets(C, cbuf);
 
 		// A4: g = e(Ppube, P2)
-		sm9_pairing(w, SM9_P2, &mpk->Ppube);
+        if(preCompute==0)
+        {
+            sm9_pairing(w, SM9_P2, encPublicKey);
+        }
+        else
+        {
+            sm9_fp12_from_hex(w, enc_preHex[preCompute-1]);
+        }
+
         //把g赋值给w
         //sm9_fp12_copy(w, g);
 
@@ -339,6 +373,7 @@ int sm9_kem_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 
 	} while (mem_is_zero(kbuf, klen) == 1);
 
+    //清理相关内存数据
 	gmssl_secure_clear(&r, sizeof(r));
 	gmssl_secure_clear(&w, sizeof(w));
 	gmssl_secure_clear(wbuf, sizeof(wbuf));
@@ -348,6 +383,7 @@ int sm9_kem_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	return 1;
 }
 
+//SM9解密封装密钥计算
 int sm9_kem_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen, const SM9_POINT *C,
 	size_t klen, uint8_t *kbuf)
 {
@@ -359,7 +395,7 @@ int sm9_kem_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen, const 
 	// B1: check C in G1
 	sm9_point_to_uncompressed_octets(C, cbuf);
 
-	// B2: w = e(C, de);
+	// B2: w = e(C, de);  此步是必须的
 	sm9_pairing(w, &key->de, C);
 	sm9_fp12_to_bytes(w, wbuf);
 
@@ -375,6 +411,7 @@ int sm9_kem_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen, const 
 		return -1;
 	}
 
+    //清理相关内存数据
 	gmssl_secure_clear(&w, sizeof(w));
 	gmssl_secure_clear(wbuf, sizeof(wbuf));
 	gmssl_secure_clear(&kdf_ctx, sizeof(kdf_ctx));
@@ -383,16 +420,17 @@ int sm9_kem_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen, const 
 	return 1;
 }
 
-int sm9_do_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
+//sm9加密运算
+int sm9_do_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size_t idlen,
 	const uint8_t *in, size_t inlen,
-	SM9_POINT *C1, uint8_t *c2, uint8_t c3[SM3_HMAC_SIZE])
+	SM9_POINT *C1, uint8_t *c2, uint8_t c3[SM3_HMAC_SIZE], int preCompute)
 {
 	SM3_HMAC_CTX hmac_ctx;
 	//uint8_t K[SM9_MAX_PLAINTEXT_SIZE + 32];
     uint8_t *K = (uint8_t *)malloc(inlen+SM3_HMAC_SIZE);
 
-    //密钥封装运算得到密钥
-	if (sm9_kem_encrypt(mpk, id, idlen, inlen+SM3_HMAC_SIZE, K, C1) != 1) {
+    //计算加密封装密钥
+	if (sm9_kem_encrypt(encPublicKey, id, idlen, inlen+SM3_HMAC_SIZE, K, C1, preCompute) != 1) {
 		error_print();
         free(K);
 		return -1;
@@ -408,6 +446,7 @@ int sm9_do_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	return 1;
 }
 
+//sm9解密运算
 int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	const SM9_POINT *C1, const uint8_t *c2, size_t c2len, const uint8_t c3[SM3_HMAC_SIZE],
 	uint8_t *out)
@@ -416,7 +455,7 @@ int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	//uint8_t K[SM9_MAX_PLAINTEXT_SIZE + SM3_HMAC_SIZE];
 	uint8_t mac[SM3_HMAC_SIZE];
     uint8_t *K = (uint8_t *)malloc(c2len+SM3_HMAC_SIZE);
-
+    //计算解密封装密钥
 	if (sm9_kem_decrypt(key, id, idlen, C1, c2len+SM3_HMAC_SIZE, K) != 1) {
 		error_print();
         free(K);
@@ -439,6 +478,7 @@ int sm9_do_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	return 1;
 }
 
+//SDK中SM9使用的是XOR的加密方式
 #define SM9_ENC_TYPE_XOR	0
 #define SM9_ENC_TYPE_ECB	1
 #define SM9_ENC_TYPE_CBC	2
@@ -527,8 +567,9 @@ int sm9_ciphertext_from_der(SM9_POINT *C1, const uint8_t **c2, size_t *c2len,
 	return 1;
 }
 
-int sm9_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
-	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen)
+//SM9加密接口
+int sm9_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size_t idlen,
+	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen, int preCompute)
 {
 	SM9_POINT C1;
 	uint8_t *c2;//[SM9_MAX_PLAINTEXT_SIZE];
@@ -539,13 +580,14 @@ int sm9_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 //		return -1;
 //	}
     c2 = (uint8_t *)malloc(inlen+SM3_HMAC_SIZE);
-
-	if (sm9_do_encrypt(mpk, id, idlen, in, inlen, &C1, c2, c3) != 1) {
+    //加密运算
+	if (sm9_do_encrypt(encPublicKey, id, idlen, in, inlen, &C1, c2, c3, preCompute) != 1) {
         free(c2);
 		error_print();
 		return -1;
 	}
 	*outlen = 0;
+    //对C1，C2，C3等信息进行der编码
 	if (sm9_ciphertext_to_der(&C1, c2, inlen, c3, &out, outlen) != 1) { // FIXME: when out == NULL
         free(c2);
 		error_print();
@@ -555,6 +597,7 @@ int sm9_encrypt(const SM9_ENC_MASTER_KEY *mpk, const char *id, size_t idlen,
 	return 1;
 }
 
+//SM9解密接口
 int sm9_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen)
 {
@@ -562,7 +605,7 @@ int sm9_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	const uint8_t *c2;
 	size_t c2len;
 	const uint8_t *c3;
-
+    //从der编码中获取C1，C2，C3等信息
 	if (sm9_ciphertext_from_der(&C1, &c2, &c2len, &c3, &in, &inlen) != 1
 		|| asn1_length_is_zero(inlen) != 1) {
 		error_print();
@@ -573,6 +616,7 @@ int sm9_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen,
 	if (!out) {
 		return 1;
 	}
+    //解密运算
 	if (sm9_do_decrypt(key, id, idlen, &C1, c2, c2len, c3, out) != 1) {
 		error_print();
 		return -1;

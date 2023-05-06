@@ -35,6 +35,8 @@ void PrePareSM9Test()
 
     sm9_enc_master_public_key_to_der(&master, &p, &len);
     sm9_enc_master_public_key_from_der(&master_public, &cp, &len);
+
+    sm9_enc_reCompute(master_public.Ppube, 1);
 }
 
 #define OneTimeTestAmount  1024
@@ -51,7 +53,7 @@ unsigned int DoSm9Test() {
     unsigned long outLen = OneTimeTestAmount+1024;
     int ret;
     unsigned int idLen = strlen(id);
-    ret = sm9_encrypt(&master_public, id, idLen, message, messageLen, cipherData, &cipherLen);
+    ret = sm9_encrypt(&(master_public.Ppube), id, idLen, message, messageLen, cipherData, &cipherLen, 1);
     if (ret != 1) {
         return 0;
     }

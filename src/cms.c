@@ -342,21 +342,19 @@ int cms_enced_content_info_encrypt_to_der(
 	const uint8_t *shared_info2, size_t shared_info2_len,
 	uint8_t **out, size_t *outlen)
 {
-	int ret;
+	int ret = -1;
 	SM4_KEY sm4_key;
 	uint8_t* enced_content = NULL;							
 	size_t enced_content_len = 100; // FIXME: why 100?					
 
 	if (!(enced_content = malloc(32 + content_len))) {
 		error_print();
-		return -1;
+        goto err;
 	}
-
-
 
 	if (enc_algor != OID_sm4_cbc || keylen != 16 || ivlen != 16) {
 		error_print();
-		return -1;
+        goto err;
 	}
 
 	sm4_set_encrypt_key(&sm4_key, key);
@@ -364,7 +362,7 @@ int cms_enced_content_info_encrypt_to_der(
 		enced_content, &enced_content_len) != 1) {
 		memset(&sm4_key, 0, sizeof(SM4_KEY));
 		error_print();
-		return -1;
+        goto err;
 	}
 	memset(&sm4_key, 0, sizeof(SM4_KEY));
 
@@ -374,9 +372,16 @@ int cms_enced_content_info_encrypt_to_der(
 		shared_info2, shared_info2_len,
 		out, outlen)) != 1) {
 		if (ret < 0) error_print();
-		return ret;
+        goto err;
 	}
-	return 1;
+
+err:
+    if(enced_content) {
+        free(enced_content);
+        enced_content = NULL;
+    }
+
+	return ret;
 }
 
 // 这个函数显然是有问题的，调用方根本不知道应该准备多大的buffer			
