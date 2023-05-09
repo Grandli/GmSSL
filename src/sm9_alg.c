@@ -1858,6 +1858,7 @@ int sm9_twist_point_print(FILE *fp, int fmt, int ind, const char *label, const S
 	return 1;
 }
 
+//从hex编码数据中获取SM9_TWIST_POINT点结构
 void sm9_twist_point_from_hex(SM9_TWIST_POINT *R, const char hex[65 * 4])
 {
 	sm9_fp2_from_hex(R->X, hex);
@@ -2725,6 +2726,7 @@ int sm9_twist_point_to_uncompressed_octets(const SM9_TWIST_POINT *P, uint8_t oct
 	return 1;
 }
 
+//从octets编码数据中获取SM9_TWIST_POINT扭曲线点结构
 int sm9_twist_point_from_uncompressed_octets(SM9_TWIST_POINT *P, const uint8_t octets[129])
 {
 	assert(octets[0] == 0x04);

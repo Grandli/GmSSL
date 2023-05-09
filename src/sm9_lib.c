@@ -18,6 +18,7 @@
 #include <gmssl/asn1.h>
 #include <gmssl/error.h>
 
+#define MAX_PRE_COMPUTE_NUM 3
 
 extern const sm9_bn_t SM9_ZERO;
 extern const sm9_bn_t SM9_N;
@@ -76,13 +77,14 @@ int sm9_signature_from_der(SM9_SIGNATURE *sig, const uint8_t **in, size_t *inlen
 	return 1;
 }
 
-char sign_preHex[5][65 * 12];
-//为了兼容不同的SM9主密钥系统，使用preComputeFlg来处理，支持5个不同系统的运算
-int sm9_sign_reCompute(SM9_SIGN_PUBLIC_KEY signPub, int preComputeFlg)
+//预计算签名时使用的g的值
+char sign_preHex[MAX_PRE_COMPUTE_NUM][65 * 12];
+//为了兼容不同的SM9主密钥系统，使用preComputeFlg来处理，支持MAX_PRE_COMPUTE_NUM个不同系统的运算
+int sm9_sign_reCompute(SM9_SIGN_PUBLIC_KEY signPub, unsigned int preComputeFlg)
 {
     sm9_fp12_t g;
     //只支持5个（0表示不进行预运算）
-    if(preComputeFlg<=0||preComputeFlg>5)
+    if(preComputeFlg<=0||preComputeFlg>MAX_PRE_COMPUTE_NUM)
     {
         error_print();
         return -1;
@@ -93,8 +95,31 @@ int sm9_sign_reCompute(SM9_SIGN_PUBLIC_KEY signPub, int preComputeFlg)
     return preComputeFlg;
 }
 
+//预计算验签时使用的扭曲线点P
+uint8_t sign_userPreOctets[MAX_PRE_COMPUTE_NUM][129];
+//为某个id做SM9验签的预运算（这个预计算提升不大）
+int sm9_sign_preCompute_for_user(SM9_SIGN_PUBLIC_KEY signPub, const char *id, size_t idlen, unsigned int preComputeFlg)
+{
+    SM9_TWIST_POINT P;
+    sm9_fn_t h1;
+    //只支持MAX_PRE_COMPUTE_NUM个（0表示不进行预运算）
+    if(preComputeFlg<=0||preComputeFlg>MAX_PRE_COMPUTE_NUM)
+    {
+        error_print();
+        return -1;
+    }
+    // B5: h1 = H1(ID || hid, N)
+    sm9_hash1(h1, id, idlen, SM9_HID_SIGN);
+    // B6: P = h1 * P2 + Ppubs
+    sm9_twist_point_mul_generator(&P, h1);
+    sm9_twist_point_add_full(&P, &P, &signPub);
+
+    sm9_twist_point_to_uncompressed_octets(&P, sign_userPreOctets[preComputeFlg-1]);
+    return preComputeFlg;
+}
+
 //初始化签名上下文
-int sm9_sign_init(SM9_SIGN_CTX *ctx, int preCompute)
+int sm9_sign_init(SM9_SIGN_CTX *ctx, unsigned int preCompute)
 {
 	const uint8_t prefix[1] = { SM9_HASH2_PREFIX };
 	sm3_init(&ctx->sm3_ctx);
@@ -129,7 +154,7 @@ int sm9_sign_finish(SM9_SIGN_CTX *ctx, const SM9_SIGN_KEY *key, uint8_t *sig, si
 }
 
 //SM9签名运算
-int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *sig, int preCompute)
+int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *sig, unsigned int preCompute)
 {
 	sm9_fn_t r;
 	sm9_fp12_t g;
@@ -190,7 +215,7 @@ int sm9_do_sign(const SM9_SIGN_KEY *key, const SM3_CTX *sm3_ctx, SM9_SIGNATURE *
 }
 
 //开始SM9验签
-int sm9_verify_init(SM9_SIGN_CTX *ctx, int preCompute)
+int sm9_verify_init(SM9_SIGN_CTX *ctx, unsigned int preCompute)
 {
 	const uint8_t prefix[1] = { SM9_HASH2_PREFIX };
 	sm3_init(&ctx->sm3_ctx);
@@ -228,7 +253,7 @@ int sm9_verify_finish(SM9_SIGN_CTX *ctx, const uint8_t *sig, size_t siglen,
 
 //SM9验签运算
 int sm9_do_verify(const SM9_SIGN_PUBLIC_KEY *signPublicKey, const char *id, size_t idlen,
-	const SM3_CTX *sm3_ctx, const SM9_SIGNATURE *sig, int preCompute)
+	const SM3_CTX *sm3_ctx, const SM9_SIGNATURE *sig, unsigned int preCompute)
 {
 	sm9_fn_t h1;
 	sm9_fn_t h2;
@@ -265,18 +290,27 @@ int sm9_do_verify(const SM9_SIGN_PUBLIC_KEY *signPublicKey, const char *id, size
     }
     else
     {
-        sm9_fp12_from_hex(g, sign_preHex[preCompute-1]);
+        sm9_fp12_from_hex(g, sign_preHex[(preCompute&0x0f)-1]);
     }
 
 	// B4: t = g^h
 	sm9_fp12_pow(t, g, sig->h);
 
-	// B5: h1 = H1(ID || hid, N)
-	sm9_hash1(h1, id, idlen, SM9_HID_SIGN);
+    if((preCompute&0xf0)==0)
+    {
+        // B5: h1 = H1(ID || hid, N)
+        sm9_hash1(h1, id, idlen, SM9_HID_SIGN);
+        // B6: P = h1 * P2 + Ppubs
+        sm9_twist_point_mul_generator(&P, h1);
+        sm9_twist_point_add_full(&P, &P, signPublicKey);
+    }
+    //如果已经预计算了扭曲线点P
+    else
+    {
+        int tempIndex = (preCompute>>4);
+        sm9_twist_point_from_uncompressed_octets(&P, sign_userPreOctets[tempIndex-1]);
+    }
 
-	// B6: P = h1 * P2 + Ppubs
-	sm9_twist_point_mul_generator(&P, h1);
-	sm9_twist_point_add_full(&P, &P, signPublicKey);
 
 	// B7: u = e(S, P)
 	sm9_pairing(u, &P, &sig->S);
@@ -300,14 +334,15 @@ int sm9_do_verify(const SM9_SIGN_PUBLIC_KEY *signPublicKey, const char *id, size
 	return 1;
 }
 
-char enc_preHex[5][65 * 12];
+//预计算加解密时使用的g的值
+char enc_preHex[MAX_PRE_COMPUTE_NUM][65 * 12];
 //sm9加解密的预运算
-//为了兼容不同的SM9主密钥系统，使用preComputeFlg来处理，支持5个不同系统的运算
-int sm9_enc_reCompute(SM9_ENC_PUBLIC_KEY encPub, int preComputeFlg)
+//为了兼容不同的SM9主密钥系统，使用preComputeFlg来处理，支持MAX_PRE_COMPUTE_NUM个不同系统的运算
+int sm9_enc_reCompute(SM9_ENC_PUBLIC_KEY encPub, unsigned int preComputeFlg)
 {
     sm9_fp12_t g;
-    //只支持5个（0表示不进行预运算）
-    if(preComputeFlg<=0||preComputeFlg>5)
+    //只支持MAX_PRE_COMPUTE_NUM个（0表示不进行预运算）
+    if(preComputeFlg<=0||preComputeFlg>MAX_PRE_COMPUTE_NUM)
     {
         error_print();
         return -1;
@@ -319,9 +354,29 @@ int sm9_enc_reCompute(SM9_ENC_PUBLIC_KEY encPub, int preComputeFlg)
     return preComputeFlg;
 }
 
+//预计算加密时使用的Q点
+uint8_t enc_userPreOctets[MAX_PRE_COMPUTE_NUM][65];
+//为某个id做SM9加密的预运算（这个预计算提升不大）
+int sm9_enc_preCompute_for_user(SM9_ENC_PUBLIC_KEY encPub, const char *id, size_t idlen, unsigned int preComputeFlg)
+{
+    SM9_POINT Q;
+    sm9_fn_t r;
+    //只支持MAX_PRE_COMPUTE_NUM个（0表示不进行预运算）
+    if(preComputeFlg<=0||preComputeFlg>MAX_PRE_COMPUTE_NUM)
+    {
+        error_print();
+        return -1;
+    }
+    sm9_hash1(r, id, idlen, SM9_HID_ENC);
+    sm9_point_mul(&Q, r, SM9_P1);
+    sm9_point_add(&Q, &Q, &encPub);
+    sm9_point_to_uncompressed_octets(&Q, enc_userPreOctets[preComputeFlg-1]);
+    return preComputeFlg;
+}
+
 //SM9加密封装密钥计算
 int sm9_kem_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size_t idlen,
-	size_t klen, uint8_t *kbuf, SM9_POINT *C, int preCompute)
+	size_t klen, uint8_t *kbuf, SM9_POINT *C, unsigned int preCompute)
 {
 	sm9_fn_t r;
 	sm9_fp12_t g;
@@ -330,10 +385,19 @@ int sm9_kem_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size
 	uint8_t cbuf[65];
 	SM3_KDF_CTX kdf_ctx;
 
-	// A1: Q = H1(ID||hid,N) * P1 + Ppube
-	sm9_hash1(r, id, idlen, SM9_HID_ENC);
-	sm9_point_mul(C, r, SM9_P1);
-	sm9_point_add(C, C, encPublicKey);
+	// A1: Q = H1(ID||hid,N) * P1 + Ppube（计算Q点）
+    if((preCompute&0xf0)==0)
+    {
+        sm9_hash1(r, id, idlen, SM9_HID_ENC);
+        sm9_point_mul(C, r, SM9_P1);
+        sm9_point_add(C, C, encPublicKey);
+    }
+    //如果已经预计算了Q
+    else
+    {
+        unsigned int tempIndex = (preCompute>>4);
+        sm9_point_from_uncompressed_octets(C, enc_userPreOctets[tempIndex-1]);
+    }
 
 	do {
 		// A2: rand r in [1, N-1]
@@ -354,7 +418,7 @@ int sm9_kem_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size
         }
         else
         {
-            sm9_fp12_from_hex(w, enc_preHex[preCompute-1]);
+            sm9_fp12_from_hex(w, enc_preHex[(preCompute&0x0f)-1]);
         }
 
         //把g赋值给w
@@ -423,7 +487,7 @@ int sm9_kem_decrypt(const SM9_ENC_KEY *key, const char *id, size_t idlen, const 
 //sm9加密运算
 int sm9_do_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size_t idlen,
 	const uint8_t *in, size_t inlen,
-	SM9_POINT *C1, uint8_t *c2, uint8_t c3[SM3_HMAC_SIZE], int preCompute)
+	SM9_POINT *C1, uint8_t *c2, uint8_t c3[SM3_HMAC_SIZE], unsigned int preCompute)
 {
 	SM3_HMAC_CTX hmac_ctx;
 	//uint8_t K[SM9_MAX_PLAINTEXT_SIZE + 32];
@@ -569,7 +633,7 @@ int sm9_ciphertext_from_der(SM9_POINT *C1, const uint8_t **c2, size_t *c2len,
 
 //SM9加密接口
 int sm9_encrypt(const SM9_ENC_PUBLIC_KEY *encPublicKey, const char *id, size_t idlen,
-	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen, int preCompute)
+	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen, unsigned int preCompute)
 {
 	SM9_POINT C1;
 	uint8_t *c2;//[SM9_MAX_PLAINTEXT_SIZE];

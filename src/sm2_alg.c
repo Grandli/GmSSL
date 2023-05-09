@@ -67,6 +67,8 @@ const SM2_BN SM2_ONE = {1,0,0,0,0,0,0,0};
 const SM2_BN SM2_TWO = {2,0,0,0,0,0,0,0};
 const SM2_BN SM2_THREE = {3,0,0,0,0,0,0,0};
 
+//SM2椭圆曲线方程：y^2 = x^3 -3*x + b
+
 
 //检测大数的数据是否异常
 int sm2_bn_check(const SM2_BN a)
@@ -916,9 +918,11 @@ int sm2_jacobian_point_is_on_curve(const SM2_JACOBIAN_POINT *P)
 		sm2_fp_add(t0, t0, t2);
 		sm2_fp_add(t0, t0, t2);
 		sm2_fp_add(t0, t0, t2);
+        //运算得到：t0 = Y^2 + 3*X*Z^4
 		sm2_fp_sqr(t2, P->X);
 		sm2_fp_mul(t2, t2, P->X);
 		sm2_fp_add(t1, t1, t2);
+        //运算得到：t1 = X^3 + b*Z^6
 	}
 
 	if (sm2_bn_cmp(t0, t1) != 0) {
@@ -946,9 +950,9 @@ void sm2_jacobian_point_dbl(SM2_JACOBIAN_POINT *R, const SM2_JACOBIAN_POINT *P)
 	SM2_BN X3;
 	SM2_BN Y3;
 	SM2_BN Z3;
-				//printf("X1 = "); print_bn(X1);
-				//printf("Y1 = "); print_bn(Y1);
-				//printf("Z1 = "); print_bn(Z1);
+    //printf("X1 = "); print_bn(X1);
+    //printf("Y1 = "); print_bn(Y1);
+    //printf("Z1 = "); print_bn(Z1);
 
 	if (sm2_jacobian_point_is_at_infinity(P)) {
 		sm2_jacobian_point_copy(R, P);
@@ -962,27 +966,25 @@ void sm2_jacobian_point_dbl(SM2_JACOBIAN_POINT *R, const SM2_JACOBIAN_POINT *P)
 	sm2_fp_tri(T2, T2);		//printf("T2 =  3 * T2 = "); print_bn(T2);
 	sm2_fp_dbl(Y3, Y1);		//printf("Y3 =  2 * Y1 = "); print_bn(Y3);
 	sm2_fp_mul(Z3, Y3, Z1);	//printf("Z3 = Y3 * Z1 = "); print_bn(Z3);
+
 	sm2_fp_sqr(Y3, Y3);		//printf("Y3 = Y3^2    = "); print_bn(Y3);
 	sm2_fp_mul(T3, Y3, X1);	//printf("T3 = Y3 * X1 = "); print_bn(T3);
-	sm2_fp_sqr(Y3, Y3);		//printf("Y3 = Y3^2    = "); print_bn(Y3);
-	sm2_fp_div2(Y3, Y3);	//printf("Y3 = Y3/2    = "); print_bn(Y3);
 	sm2_fp_sqr(X3, T2);		//printf("X3 = T2^2    = "); print_bn(X3);
 	sm2_fp_dbl(T1, T3);		//printf("T1 =  2 * T1 = "); print_bn(T1);
 	sm2_fp_sub(X3, X3, T1);	//printf("X3 = X3 - T1 = "); print_bn(X3);
+
 	sm2_fp_sub(T1, T3, X3);	//printf("T1 = T3 - X3 = "); print_bn(T1);
 	sm2_fp_mul(T1, T1, T2);	//printf("T1 = T1 * T2 = "); print_bn(T1);
+    sm2_fp_sqr(Y3, Y3);		//printf("Y3 = Y3^2    = "); print_bn(Y3);
+    sm2_fp_div2(Y3, Y3);	//printf("Y3 = Y3/2    = "); print_bn(Y3);
 	sm2_fp_sub(Y3, T1, Y3);	//printf("Y3 = T1 - Y3 = "); print_bn(Y3);
 
 	sm2_bn_copy(R->X, X3);
 	sm2_bn_copy(R->Y, Y3);
 	sm2_bn_copy(R->Z, Z3);
-
-				//printf("X3 = "); print_bn(R->X);
-				//printf("Y3 = "); print_bn(R->Y);
-				//printf("Z3 = "); print_bn(R->Z);
-
 }
 
+//椭圆曲线点的加法运算：R = P + Q
 void sm2_jacobian_point_add(SM2_JACOBIAN_POINT *R, const SM2_JACOBIAN_POINT *P, const SM2_JACOBIAN_POINT *Q)
 {
 	const uint64_t *X1 = P->X;
@@ -998,11 +1000,13 @@ void sm2_jacobian_point_add(SM2_JACOBIAN_POINT *R, const SM2_JACOBIAN_POINT *P, 
 	SM2_BN Y3;
 	SM2_BN Z3;
 
+    //如果Q是无穷远点，R = P
 	if (sm2_jacobian_point_is_at_infinity(Q)) {
 		sm2_jacobian_point_copy(R, P);
 		return;
 	}
 
+    //如果P是无穷远点， R = Q
 	if (sm2_jacobian_point_is_at_infinity(P)) {
 		sm2_jacobian_point_copy(R, Q);
 		return;
@@ -1068,17 +1072,11 @@ void sm2_jacobian_point_mul(SM2_JACOBIAN_POINT *R, const SM2_BN k, const SM2_JAC
 {
 	char bits[257] = {0};
 	SM2_JACOBIAN_POINT _Q, *Q = &_Q;
-	SM2_JACOBIAN_POINT _T, *T = &_T;
 	int i;
 
 	// FIXME: point_add need affine, so we can not use point_add
 	if (!sm2_bn_is_one(P->Z)) {
-		SM2_BN x;
-		SM2_BN y;
-		sm2_jacobian_point_get_xy(P, x, y);
-		sm2_jacobian_point_set_xy(T, x, y);
-		P = T;
-        //sm2_jacobian_point_normal(P);
+        sm2_jacobian_point_normal((SM2_JACOBIAN_POINT *)P);
 	}
 
 	sm2_jacobian_point_set_infinity(Q);
@@ -1128,8 +1126,6 @@ void sm2_jacobian_point_mul_sum(SM2_JACOBIAN_POINT *R, const SM2_BN t, const SM2
 	sm2_jacobian_point_mul(R, t, P);
     //此处是把R的Z坐标转换为1
     sm2_jacobian_point_normal(R);
-//	sm2_jacobian_point_get_xy(R, x, y);
-//	sm2_jacobian_point_set_xy(R, x, y);
 
 	// R = R + T
 	sm2_jacobian_point_add(R, sG, R);
