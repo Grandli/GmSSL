@@ -24,7 +24,7 @@ void PrePareSM2Test()
     memcpy(&pub_key, &sm2_key, sizeof(SM2_POINT));
 }
 
-#define OneTimeTestAmount  5*1024
+#define OneTimeTestAmount  256
 unsigned int DoSm2Test() {
     //明文数据
     unsigned char message[OneTimeTestAmount]= "chinese standard message";

@@ -24,6 +24,7 @@ add_executable(gmssl_cipher_demo
         src/sm4/sm4_cipher_demo.c
         src/sm3/sm3_cipher_demo.c
         src/hmac/hmac_cipher_demo.c
+        src/tlcp/tlcp_cipher_demo.c
         src/common/Utils.c
         )
 

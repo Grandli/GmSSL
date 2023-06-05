@@ -16,6 +16,7 @@
 #include <gmssl/aead.h>
 #include <gmssl/error.h>
 
+//对一些数据进行：sm4的（cbc、ctr）的加密运算，并对这些数据同时进行基于sm3的hmac的运算接口
 
 int sm4_cbc_sm3_hmac_encrypt_init(SM4_CBC_SM3_HMAC_CTX *ctx,
 	const uint8_t *key, size_t keylen, const uint8_t *iv, size_t ivlen,

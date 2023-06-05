@@ -4,6 +4,7 @@
 #include "sm9/sm9_cipher_demo.h"
 #include "sm4/sm4_cipher_demo.h"
 #include "hmac/hmac_cipher_demo.h"
+#include "tlcp/tlcp_cipher_demo.h"
 #include "common/Utils.h"
 
 //创建相应的密码运算实例
@@ -26,6 +27,9 @@ Cipher_Demo_Base *FactoryCreateCipherDemo(int type) {
             break;
         case HMAC_DEMO:
             cipherDemo = &hmacCipherDemo;
+            break;
+        case TLCP_DEMO:
+            cipherDemo = &tlcpCipherDemo;
             break;
     }
 

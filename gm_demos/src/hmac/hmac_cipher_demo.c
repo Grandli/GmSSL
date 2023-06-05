@@ -15,8 +15,23 @@ static int doTestSuit1() {
     int iRet = 0;
     char *outMac;
 
-    ComPrintf("hmac test success\n");
+    unsigned char hmac[32] = {0};
+    int i;
+    SM3_HMAC_CTX hmac_ctx;
 
+
+    sm3_hmac_init(&hmac_ctx, key, strlen(key));
+    sm3_hmac_update(&hmac_ctx, message, strlen(message));
+    sm3_hmac_finish(&hmac_ctx, hmac);
+
+    outMac = ComStrToHex(hmac, 32, true);
+    if(memcmp(outMac, myHmac, strlen(myHmac))!=0)
+    {
+        ComPrintf("hmac data is error\n");
+        return -1;
+    }
+
+    ComPrintf("hmac test success, mac = %s\n", outMac);
 
     return GM_SUCCESS;
 }

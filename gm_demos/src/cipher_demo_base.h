@@ -1,5 +1,5 @@
-#ifndef EMBED_SDK_CIPHER_DEMO_BASE_H
-#define EMBED_SDK_CIPHER_DEMO_BASE_H
+#ifndef GMSSL_SDK_CIPHER_DEMO_BASE_H
+#define GMSSL_SDK_CIPHER_DEMO_BASE_H
 
 #include "gmssl_common.h"
 #include "common/Utils.h"
@@ -55,4 +55,4 @@ void CommonDemoInit(Cipher_Demo_Base *cipherDemo);
 void CommonDemoExit(Cipher_Demo_Base *cipherDemo);
 
 
-#endif //EMBED_SDK_CIPHER_DEMO_BASE_H
+#endif //GMSSL_SDK_CIPHER_DEMO_BASE_H

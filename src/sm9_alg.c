@@ -1887,6 +1887,7 @@ void sm9_twist_point_get_xy(const SM9_TWIST_POINT *P, sm9_fp2_t x, sm9_fp2_t y)
 	if (sm9_fp2_is_one(P->Z)) {
 		sm9_fp2_copy(x, P->X);
 		sm9_fp2_copy(y, P->Y);
+        return;
 	}
 
 	sm9_fp2_inv(z_inv, P->Z);

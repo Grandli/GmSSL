@@ -1,5 +1,5 @@
-#ifndef EMBED_SDK_CIPHER_DEMO_FACTORY_H
-#define EMBED_SDK_CIPHER_DEMO_FACTORY_H
+#ifndef GMSSL_SDK_CIPHER_DEMO_FACTORY_H
+#define GMSSL_SDK_CIPHER_DEMO_FACTORY_H
 
 #include "cipher_demo_base.h"
 
@@ -10,6 +10,7 @@ typedef enum {
     SM9_DEMO,//SM9运算demo
     SM3_DEMO,//SM3运算demo
     HMAC_DEMO,//HMAC运算demo
+    TLCP_DEMO,//TLP的demo
     MAX_DEMO_NUM
 }CipherDemoType;
 
@@ -17,4 +18,4 @@ typedef enum {
 Cipher_Demo_Base *FactoryCreateCipherDemo(int type);
 
 
-#endif //EMBED_SDK_CIPHER_DEMO_FACTORY_H
+#endif //GMSSL_SDK_CIPHER_DEMO_FACTORY_H

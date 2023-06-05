@@ -169,7 +169,7 @@ typedef enum  {
 	TLS_handshake_encrypted_extensions	= 8,
 	TLS_handshake_certificate		= 11,
 	TLS_handshake_server_key_exchange	= 12,
-	TLS_handshake_certificate_request	= 13,
+	TLS_handshake_certificate_request	= 13,//
 	TLS_handshake_server_hello_done		= 14,
 	TLS_handshake_certificate_verify	= 15,
 	TLS_handshake_client_key_exchange	= 16,
@@ -741,7 +741,7 @@ typedef struct {
 	int is_client;
 	int cipher_suites[TLS_MAX_CIPHER_SUITES_COUNT];
 	size_t cipher_suites_cnt;
-	tls_socket_t sock;
+	tls_socket_t sock;   //通信的socket
 
 	uint8_t enced_record[TLS_MAX_RECORD_SIZE];
 	size_t enced_record_len;

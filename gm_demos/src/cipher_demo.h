@@ -1,5 +1,5 @@
-#ifndef EMBED_SDK_CIPHER_DEMO_H
-#define EMBED_SDK_CIPHER_DEMO_H
+#ifndef GMSSL_SDK_CIPHER_DEMO_H
+#define GMSSL_SDK_CIPHER_DEMO_H
 
 #include "gmssl_common.h"
 #include <stdlib.h>
@@ -11,5 +11,5 @@ void CipherDemoInit();
 void DestroyCipherDemo();
 
 
-#endif //EMBED_SDK_CIPHER_DEMO_H
+#endif //GMSSL_SDK_CIPHER_DEMO_H
 

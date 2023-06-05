@@ -17,7 +17,7 @@
 #include "demo_util.h"
 
 
-#define OneTimeTestAmount  5*1024*1024
+#define OneTimeTestAmount  8*1024
 
 unsigned int DoSm4Test()
 {
@@ -69,7 +69,7 @@ int main(void)
 //    }
 //    getPrintSize(amountStr, haveTestAmount);
 //    printf("haveCostTime = %ld ms, testTimes = %d,  testAmount = %s\n",getCurrentTime()-currentTime, testTimes, amountStr);
-    demoDoUtilTest(DoSm4Test, 10, "sm4_cbc");
+    demoDoUtilTest(DoSm4Test, 3, "sm4_cbc");
 
 	return 0;
 }

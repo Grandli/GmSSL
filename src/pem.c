@@ -35,6 +35,7 @@ static int remove_newline(char *line)
 	return 0; // No newline found, might not be an error
 }
 
+//把数据进行base64编码，输出pem文件
 int pem_write(FILE *fp, const char *name, const uint8_t *data, size_t datalen)
 {
 	BASE64_CTX ctx;
@@ -64,6 +65,7 @@ int pem_write(FILE *fp, const char *name, const uint8_t *data, size_t datalen)
 	return 1;
 }
 
+//读取pem文件，对base64数据解码，获得实际的数据
 int pem_read(FILE *fp, const char *name, uint8_t *data, size_t *datalen, size_t maxlen)
 {
 	char line[80];
