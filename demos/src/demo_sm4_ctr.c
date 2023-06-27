@@ -57,7 +57,7 @@ int main(void)
 	memcpy(ctr, iv, 16);
 	sm4_ctr_encrypt(&sm4_key, ctr, mbuf, sizeof(mbuf), cbuf);
 
-	printf("ciphertext: ");
+	printf("ciphertext %ld: ", sizeof(cbuf));
 	for (i = 0; i < sizeof(cbuf); i++) {
 		printf("%02X", cbuf[i]);
 	}

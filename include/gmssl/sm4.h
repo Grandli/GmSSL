@@ -66,6 +66,14 @@ int sm4_cbc_padding_encrypt(const SM4_KEY *key, const uint8_t iv[SM4_BLOCK_SIZE]
 int sm4_cbc_padding_decrypt(const SM4_KEY *key, const uint8_t iv[SM4_BLOCK_SIZE],
 	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen);
 
+void sm4_ofb_encrypt(const SM4_KEY *key, uint8_t iv[SM4_BLOCK_SIZE],
+     const uint8_t *in, size_t inlen, uint8_t *out);
+#define sm4_ofb_decrypt(key,iv,in,inlen,out) sm4_ofb_encrypt(key,iv,in,inlen,out)
+
+void sm4_cfb_encrypt(const SM4_KEY *key, uint8_t iv[SM4_BLOCK_SIZE],
+                     const uint8_t *in, size_t inlen, uint8_t *out);
+#define sm4_cfb_decrypt(key,iv,in,inlen,out) sm4_cfb_encrypt(key,iv,in,inlen,out)
+
 
 void sm4_ctr_encrypt(const SM4_KEY *key, uint8_t ctr[SM4_BLOCK_SIZE],
 	const uint8_t *in, size_t inlen, uint8_t *out);
@@ -124,6 +132,37 @@ int sm4_ctr_encrypt_finish(SM4_CTR_CTX *ctx, uint8_t *out, size_t *outlen);
 #define sm4_ctr_decrypt_update(ctx,in,inlen,out,outlen) sm4_ctr_encrypt_update(ctx,in,inlen,out,outlen)
 #define sm4_ctr_decrypt_finish(ctx,out,outlen) sm4_ctr_encrypt_finish(ctx,out,outlen)
 
+
+typedef struct {
+    SM4_KEY sm4_key;
+    uint8_t iv[SM4_BLOCK_SIZE];
+    uint8_t block[SM4_BLOCK_SIZE];
+    size_t block_nbytes;
+} SM4_OFB_CTX;
+
+
+int sm4_ofb_encrypt_init(SM4_OFB_CTX *ctx, const uint8_t key[SM4_KEY_SIZE], const uint8_t iv[SM4_BLOCK_SIZE]);
+int sm4_ofb_encrypt_update(SM4_OFB_CTX *ctx, const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen);
+int sm4_ofb_encrypt_finish(SM4_OFB_CTX *ctx, uint8_t *out, size_t *outlen);
+
+#define sm4_ofb_decrypt_init(ctx, key, iv) sm4_ofb_encrypt_init(ctx, key, iv)
+#define sm4_ofb_decrypt_update(ctx,in,inlen,out,outlen) sm4_ofb_encrypt_update(ctx,in,inlen,out,outlen)
+#define sm4_ofb_decrypt_finish(ctx, out, outlen) sm4_ofb_encrypt_finish(ctx, out, outlen)
+
+typedef struct {
+    SM4_KEY sm4_key;
+    uint8_t iv[SM4_BLOCK_SIZE];
+    uint8_t block[SM4_BLOCK_SIZE];
+    size_t block_nbytes;
+} SM4_CFB_CTX;
+
+int sm4_cfb_encrypt_init(SM4_CFB_CTX *ctx, const uint8_t key[SM4_KEY_SIZE], const uint8_t iv[SM4_BLOCK_SIZE]);
+int sm4_cfb_encrypt_update(SM4_CFB_CTX *ctx, const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen);
+int sm4_cfb_encrypt_finish(SM4_CFB_CTX *ctx, uint8_t *out, size_t *outlen);
+
+#define sm4_cfb_decrypt_init(ctx, key, iv) sm4_cfb_encrypt_init(ctx, key, iv)
+#define sm4_cfb_decrypt_update(ctx,in,inlen,out,outlen) sm4_cfb_encrypt_update(ctx,in,inlen,out,outlen)
+#define sm4_cfb_decrypt_finish(ctx, out, outlen) sm4_cfb_encrypt_finish(ctx, out, outlen)
 
 #ifdef __cplusplus
 }

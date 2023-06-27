@@ -178,6 +178,8 @@ set(demos
 	demo_sm4_cbc_decrypt_update
 	demo_sm4_cbc_encrypt_update
 	demo_sm4_cbc_padding
+	demo_sm4_cfb
+	demo_sm4_ofb
 	demo_sm4_ctr
 	demo_sm4_ctr_encrypt_update
 	demo_sm4_gcm

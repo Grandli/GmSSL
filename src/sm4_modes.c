@@ -398,3 +398,156 @@ int sm4_ctr_encrypt_finish(SM4_CTR_CTX *ctx, uint8_t *out, size_t *outlen)
 	*outlen = ctx->block_nbytes;
 	return 1;
 }
+
+void sm4_ofb_encrypt(const SM4_KEY *key, uint8_t iv[16],
+                     const uint8_t *in, size_t inlen, uint8_t *out)
+{
+    size_t len;
+
+    while (inlen) {
+        len = inlen < 16 ? inlen : 16;
+        sm4_encrypt(key, iv, iv);
+        gmssl_memxor(out, in, iv, 16);
+        in += len;
+        out += len;
+        inlen -= len;
+    }
+}
+
+int sm4_ofb_encrypt_init(SM4_OFB_CTX *ctx, const uint8_t key[SM4_KEY_SIZE], const uint8_t iv[SM4_BLOCK_SIZE])
+{
+    sm4_set_encrypt_key(&ctx->sm4_key, key);
+    memcpy(ctx->iv, iv, SM4_BLOCK_SIZE);
+    memset(ctx->block, 0, SM4_BLOCK_SIZE);
+    ctx->block_nbytes = 0;
+    return 1;
+}
+
+int sm4_ofb_encrypt_update(SM4_OFB_CTX *ctx, const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen)
+{
+    size_t left;
+    size_t nblocks;
+    size_t len;
+
+    if (ctx->block_nbytes >= SM4_BLOCK_SIZE) {
+        error_print();
+        return -1;
+    }
+    *outlen = 0;
+    if (ctx->block_nbytes) {
+        left = SM4_BLOCK_SIZE - ctx->block_nbytes;
+        if (inlen < left) {
+            memcpy(ctx->block + ctx->block_nbytes, in, inlen);
+            ctx->block_nbytes += inlen;
+            return 1;
+        }
+        memcpy(ctx->block + ctx->block_nbytes, in, left);
+        sm4_ofb_encrypt(&ctx->sm4_key, ctx->iv, ctx->block, SM4_BLOCK_SIZE, out);
+        in += left;
+        inlen -= left;
+        out += SM4_BLOCK_SIZE;
+        *outlen += SM4_BLOCK_SIZE;
+    }
+    if (inlen >= SM4_BLOCK_SIZE) {
+        nblocks = inlen / SM4_BLOCK_SIZE;
+        len = nblocks * SM4_BLOCK_SIZE;
+        sm4_ofb_encrypt(&ctx->sm4_key, ctx->iv, in, len, out);
+        in += len;
+        inlen -= len;
+        out += len;
+        *outlen += len;
+    }
+    if (inlen) {
+        memcpy(ctx->block, in, inlen);
+    }
+    ctx->block_nbytes = inlen;
+    return 1;
+}
+
+int sm4_ofb_encrypt_finish(SM4_OFB_CTX *ctx, uint8_t *out, size_t *outlen)
+{
+    if (ctx->block_nbytes >= SM4_BLOCK_SIZE) {
+        error_print();
+        return -1;
+    }
+    sm4_ofb_encrypt(&ctx->sm4_key, ctx->iv, ctx->block, ctx->block_nbytes, out);
+    *outlen = ctx->block_nbytes;
+    return 1;
+}
+
+void sm4_cfb_encrypt(const SM4_KEY *key, uint8_t iv[16],
+                     const uint8_t *in, size_t inlen, uint8_t *out)
+{
+    size_t len;
+
+    while (inlen) {
+        len = inlen < 16 ? inlen : 16;
+        sm4_encrypt(key, iv, iv);
+        gmssl_memxor(out, in, iv, 16);
+        memcpy(iv, out, 16);
+        in += len;
+        out += len;
+        inlen -= len;
+    }
+}
+
+int sm4_cfb_encrypt_init(SM4_CFB_CTX *ctx, const uint8_t key[SM4_KEY_SIZE], const uint8_t iv[SM4_BLOCK_SIZE])
+{
+    sm4_set_encrypt_key(&ctx->sm4_key, key);
+    memcpy(ctx->iv, iv, SM4_BLOCK_SIZE);
+    memset(ctx->block, 0, SM4_BLOCK_SIZE);
+    ctx->block_nbytes = 0;
+    return 1;
+}
+
+int sm4_cfb_encrypt_update(SM4_CFB_CTX *ctx, const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen)
+{
+    size_t left;
+    size_t nblocks;
+    size_t len;
+
+    if (ctx->block_nbytes >= SM4_BLOCK_SIZE) {
+        error_print();
+        return -1;
+    }
+    *outlen = 0;
+    if (ctx->block_nbytes) {
+        left = SM4_BLOCK_SIZE - ctx->block_nbytes;
+        if (inlen < left) {
+            memcpy(ctx->block + ctx->block_nbytes, in, inlen);
+            ctx->block_nbytes += inlen;
+            return 1;
+        }
+        memcpy(ctx->block + ctx->block_nbytes, in, left);
+        sm4_cfb_encrypt(&ctx->sm4_key, ctx->iv, ctx->block, SM4_BLOCK_SIZE, out);
+        in += left;
+        inlen -= left;
+        out += SM4_BLOCK_SIZE;
+        *outlen += SM4_BLOCK_SIZE;
+    }
+    if (inlen >= SM4_BLOCK_SIZE) {
+        nblocks = inlen / SM4_BLOCK_SIZE;
+        len = nblocks * SM4_BLOCK_SIZE;
+        sm4_cfb_encrypt(&ctx->sm4_key, ctx->iv, in, len, out);
+        in += len;
+        inlen -= len;
+        out += len;
+        *outlen += len;
+    }
+    if (inlen) {
+        memcpy(ctx->block, in, inlen);
+    }
+    ctx->block_nbytes = inlen;
+    return 1;
+}
+
+int sm4_cfb_encrypt_finish(SM4_CFB_CTX *ctx, uint8_t *out, size_t *outlen)
+{
+    if (ctx->block_nbytes >= SM4_BLOCK_SIZE) {
+        error_print();
+        return -1;
+    }
+    sm4_cfb_encrypt(&ctx->sm4_key, ctx->iv, ctx->block, ctx->block_nbytes, out);
+    *outlen = ctx->block_nbytes;
+    return 1;
+}

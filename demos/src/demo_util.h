@@ -5,6 +5,8 @@
 #ifndef GMSSL_DEMO_UTIL_H
 #define GMSSL_DEMO_UTIL_H
 
+#include <stdbool.h>
+
 #define MAX_TIME_COUNT_NUM 10
 
 typedef unsigned int (*TestFunc)(void);
@@ -22,5 +24,13 @@ void demoDoUtilTest(TestFunc testFunc, unsigned int testTime, const char *testNa
 void beginCommonTime(int index);
 //结束测试时间计时
 float endCommonTime(int index);
+
+//把字符串数据转为十六进制的字符串
+char *ComStrToHex(unsigned char *inData, int inLen, bool bUpper);
+//把十六进制的字符串转为字符串数据
+int ComHexToStr(const char *inData, unsigned char *outBuf, int inLen);
+
+//按16进制打印内存数据
+void dumpMem(unsigned char *data, int len);
 
 #endif //GMSSL_DEMO_UTIL_H
