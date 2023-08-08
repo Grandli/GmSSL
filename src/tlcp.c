@@ -128,7 +128,7 @@ int tlcp_server_key_exchange_pke_print(FILE *fp, const uint8_t *data, size_t dat
 }
 
 //需要先进行tls相关的初始化等
-//tlcp的连接
+//客户端请求tlcp连接的协商处理
 int tlcp_do_connect(TLS_CONNECT *conn)
 {
 	int ret = -1;
@@ -171,7 +171,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 	size_t len;
 
 	int depth = 5;
-	int alert = 0;
+	int alert = 0, iRecvRet = 0;
 	int verify_result;
 
 
@@ -184,6 +184,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// send ClientHello
 	tls_random_generate(client_random);
+    //封装客户端随机数+支持的密码套件（会话id为空，表示是需要生成新的会话）
 	if (tls_record_set_handshake_client_hello(record, &recordlen,
 		TLS_protocol_tlcp, client_random, NULL, 0,
 		tlcp_ciphers, tlcp_ciphers_count, NULL, 0) != 1) {
@@ -192,6 +193,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 	}
 	tls_trace("send ClientHello\n");
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //客户端发送 ClientHello，带随机数
 	if (tls_record_send(record, recordlen, conn->sock) != 1) {
 		error_print();
 		goto end;
@@ -200,9 +202,13 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// recv ServerHello
 	tls_trace("recv ServerHello\n");
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1) {
+    //接收数据
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
@@ -211,6 +217,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 		tls_send_alert(conn, TLS_alert_protocol_version);
 		goto end;
 	}
+    //解析服务器发来的serverHello握手协议的数据：服务器随机数+会话id+密码套件id
 	if (tls_record_get_handshake_server_hello(record,
 		&protocol, &random, &session_id, &session_id_len, &cipher_suite,
 		&exts, &exts_len) != 1) {
@@ -223,11 +230,13 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 		error_print();
 		goto end;
 	}
+    //验证密码套件是否支持
 	if (tls_cipher_suite_in_list(cipher_suite, tlcp_ciphers, tlcp_ciphers_count) != 1) {
 		tls_send_alert(conn, TLS_alert_handshake_failure);
 		error_print();
 		goto end;
 	}
+    //检测是否有多余的参数
 	if (exts) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_unexpected_message);
@@ -240,14 +249,18 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// recv ServerCertificate
 	tls_trace("recv ServerCertificate\n");
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1
+    //接收数据
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 		|| tls_record_protocol(record) != TLS_protocol_tlcp) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
-
+    //解析收到的证书信息
 	if (tls_record_get_handshake_certificate(record,
 		conn->server_certs, &conn->server_certs_len) != 1) {
 		error_print();
@@ -270,13 +283,17 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// recv ServerKeyExchange
 	tls_trace("recv ServerKeyExchange\n");
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 		|| tls_record_protocol(record) != TLS_protocol_tlcp) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //获取消息中的签名值
 	if (tlcp_record_get_handshake_server_key_exchange_pke(record, &sig, &siglen) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_unexpected_message);
@@ -285,25 +302,37 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 	sm3_update(&sm3_ctx, record + 5, recordlen - 5);
 
 	// verify ServerKeyExchange
+    //通过索引位置获取证书数据
 	if (x509_certs_get_cert_by_index(conn->server_certs, conn->server_certs_len, 0, &cp, &len) != 1
+        //通过证书数据获取验签公钥
 		|| x509_cert_get_subject_public_key(cp, len, &server_sign_key) != 1
+        //通过索引位置获取加密公钥证书数据
 		|| x509_certs_get_cert_by_index(conn->server_certs, conn->server_certs_len, 1, &server_enc_cert, &server_enc_cert_len) != 1
+        //通过证书数据获取加密公钥
 		|| x509_cert_get_subject_public_key(server_enc_cert, server_enc_cert_len, &server_enc_key) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_bad_certificate);
 		goto end;
 	}
-	p = server_enc_cert_lenbuf; len = 0;
+	p = server_enc_cert_lenbuf;
+    len = 0;
+    //获取server_enc_cert_lenbuf的数据
 	tls_uint24_to_bytes((uint24_t)server_enc_cert_len, &p, &len);
+    //开始sm2验签运算
 	if (sm2_verify_init(&verify_ctx, &server_sign_key, SM2_DEFAULT_ID, SM2_DEFAULT_ID_LENGTH) != 1
+        //输入客户端随机数
 		|| sm2_verify_update(&verify_ctx, client_random, 32) != 1
+        //输入服务端随机数
 		|| sm2_verify_update(&verify_ctx, server_random, 32) != 1
+        //输入加密证书数据的长度
 		|| sm2_verify_update(&verify_ctx, server_enc_cert_lenbuf, 3) != 1
+        //输入加密证书数据
 		|| sm2_verify_update(&verify_ctx, server_enc_cert, server_enc_cert_len) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_internal_error);
 		goto end;
 	}
+    //完成验签运算
 	if (sm2_verify_finish(&verify_ctx, sig, siglen) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_decrypt_error);
@@ -311,13 +340,17 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 	}
 
 	// recv CertificateRequest or ServerHelloDone
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 		|| tls_record_protocol(record) != TLS_protocol_tlcp
 		|| tls_record_get_handshake(record, &handshake_type, &cp, &len) != 1) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
+    //如果握手类型为证书请求
 	if (handshake_type == TLS_handshake_certificate_request) {
 		const uint8_t *cert_types;
 		size_t cert_types_len;
@@ -347,10 +380,13 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 		sm3_update(&sm3_ctx, record + 5, recordlen - 5);
 
 		// recv ServerHelloDone
-		if (tls_record_recv(record, &recordlen, conn->sock) != 1
+		if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 			|| tls_record_protocol(record) != TLS_protocol_tlcp) {
 			error_print();
-			tls_send_alert(conn, TLS_alert_unexpected_message);
+            if(iRecvRet<0)
+            {
+                tls_send_alert(conn, TLS_alert_unexpected_message);
+            }
 			goto end;
 		}
 	} else {
@@ -361,6 +397,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 	}
 	tls_trace("recv ServerHelloDone\n");
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //检查是否是ServerHelloDone的协议
 	if (tls_record_get_handshake_server_hello_done(record) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_unexpected_message);
@@ -371,12 +408,14 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 	// send ClientCertificate
 	if (conn->client_certs_len) {
 		tls_trace("send ClientCertificate\n");
+        //设置客户端证书数据
 		if (tls_record_set_handshake_certificate(record, &recordlen, conn->client_certs, conn->client_certs_len) != 1) {
 			error_print();
 			tls_send_alert(conn, TLS_alert_internal_error);
 			goto end;
 		}
 		tlcp_record_trace(stderr, record, recordlen, 0, 0);
+        //发送客户端证书数据
 		if (tls_record_send(record, recordlen, conn->sock) != 1) {
 			error_print();
 			goto end;
@@ -386,10 +425,13 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// generate MASTER_SECRET
 	tls_trace("generate secrets\n");
+    //生成预主密钥
 	if (tls_pre_master_secret_generate(pre_master_secret, TLS_protocol_tlcp) != 1
+        //生成主密钥
 		|| tls_prf(pre_master_secret, 48, "master secret",
 			client_random, 32, server_random, 32,
 			48, conn->master_secret) != 1
+        //生成需要实际用到的密钥组
 		|| tls_prf(conn->master_secret, 48, "key expansion",
 			server_random, 32, client_random, 32,
 			96, conn->key_block) != 1) {
@@ -397,9 +439,13 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 		tls_send_alert(conn, TLS_alert_internal_error);
 		goto end;
 	}
+    //客户端的写入mac密钥（用对客户端发给服务端的数据进行mac运算）
 	sm3_hmac_init(&conn->client_write_mac_ctx, conn->key_block, 32);
+    //服务端的写入mac密钥（用于验证服务端发来的数据的完整性、真实性）
 	sm3_hmac_init(&conn->server_write_mac_ctx, conn->key_block + 32, 32);
+    //客户端的写入sm4加密密钥(用于加密发给服务端的数据）
 	sm4_set_encrypt_key(&conn->client_write_enc_key, conn->key_block + 64);
+    //服务端的写入sm4加密密钥（用于解密服务端发送的数据）
 	sm4_set_decrypt_key(&conn->server_write_enc_key, conn->key_block + 80);
 	/*
 	tls_secrets_print(stderr,
@@ -412,8 +458,10 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// send ClientKeyExchange
 	tls_trace("send ClientKeyExchange\n");
+    //对预主根密钥进行加密
 	if (sm2_encrypt(&server_enc_key, pre_master_secret, 48,
 			enced_pre_master_secret, &enced_pre_master_secret_len) != 1
+        //把预主根密钥的密文进行封装
 		|| tls_record_set_handshake_client_key_exchange_pke(record, &recordlen,
 			enced_pre_master_secret, enced_pre_master_secret_len) != 1) {
 		error_print();
@@ -421,6 +469,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //实际的发送ClientKeyExchange：发送预主根密钥
 	if (tls_record_send(record, recordlen, conn->sock) != 1) {
 		error_print();
 		goto end;
@@ -428,6 +477,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 	sm3_update(&sm3_ctx, record + 5, recordlen - 5);
 
 	// send CertificateVerify
+    //如果客户端有证书
 	if (conn->client_certs_len) {
 		tls_trace("send CertificateVerify\n");
 
@@ -464,6 +514,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //表示客户端已经完成协商，发送密码规格变更协议，后续的消息发送需要加密
 	if (tls_record_send(record, recordlen, conn->sock) != 1) {
 		error_print();
 		goto end;
@@ -471,8 +522,10 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// send Client Finished
 	tls_trace("send Finished\n");
+    //把当前的状态赋值给一个临时的sm3哈希上下文
 	memcpy(&tmp_sm3_ctx, &sm3_ctx, sizeof(sm3_ctx));
 	sm3_finish(&tmp_sm3_ctx, sm3_hash);
+    //Client Finished 通过prf生成12位的完整性校验数据
 	if (tls_prf(conn->master_secret, 48, "client finished",
 			sm3_hash, 32, NULL, 0, sizeof(local_verify_data), local_verify_data) != 1
 		|| tls_record_set_handshake_finished(finished_record, &finished_record_len,
@@ -486,6 +539,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// encrypt Client Finished
 	tls_trace("encrypt Finished\n");
+    //加密消息处理
 	if (tls_record_encrypt(&conn->client_write_mac_ctx, &conn->client_write_enc_key,
 		conn->client_seq_num, finished_record, finished_record_len, record, &recordlen) != 1) {
 		error_print();
@@ -494,6 +548,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 	}
 	tlcp_record_trace(stderr, record, recordlen, (1<<24), 0); // 强制打印密文原数据
 	tls_seq_num_incr(conn->client_seq_num);
+    //发送客户端握手结束
 	if (tls_record_send(record, recordlen, conn->sock) != 1) {
 		error_print();
 		goto end;
@@ -501,13 +556,17 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// [ChangeCipherSpec]
 	tls_trace("recv [ChangeCipherSpec]\n");
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 		|| tls_record_protocol(record) != TLS_protocol_tlcp) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //收到密码变更协议，可以开始用读密钥进行解密数据
 	if (tls_record_get_change_cipher_spec(record) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_unexpected_message);
@@ -516,10 +575,13 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 
 	// Finished
 	tls_trace("recv Finished\n");
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 		|| tls_record_protocol(record) != TLS_protocol_tlcp) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
 	if (recordlen > sizeof(finished_record)) {
@@ -529,6 +591,7 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 	}
 	tlcp_record_trace(stderr, record, recordlen, (1<<24), 0); // 强制打印密文原数据
 	tls_trace("decrypt Finished\n");
+    //解密消息内容
 	if (tls_record_decrypt(&conn->server_write_mac_ctx, &conn->server_write_enc_key,
 		conn->server_seq_num, record, recordlen, finished_record, &finished_record_len) != 1) {
 		error_print();
@@ -547,13 +610,16 @@ int tlcp_do_connect(TLS_CONNECT *conn)
 		tls_send_alert(conn, TLS_alert_unexpected_message);
 		goto end;
 	}
+    //最后一次完成数据的校验
 	sm3_finish(&sm3_ctx, sm3_hash);
+    //接收到server finished，通过prf计算完整性校验值
 	if (tls_prf(conn->master_secret, 48, "server finished",
 		sm3_hash, 32, NULL, 0, sizeof(local_verify_data), local_verify_data) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_internal_error);
 		goto end;
 	}
+    //验证本地prf计算得到的local_verify_data，是否和服务端发来的verify_data是否一致
 	if (memcmp(verify_data, local_verify_data, sizeof(local_verify_data)) != 0) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_decrypt_error);
@@ -572,7 +638,7 @@ end:
 	gmssl_secure_clear(pre_master_secret, sizeof(pre_master_secret));
 	return ret;
 }
-
+//服务端接受tlcp连接的协商处理
 int tlcp_do_accept(TLS_CONNECT *conn)
 {
 	int ret = -1;
@@ -610,7 +676,7 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 	const uint8_t *sig;
 	const int verify_depth = 5;
 	int verify_result;
-
+    int iRecvRet = 1;
 	// ClientKeyExchange
 	const uint8_t *enced_pms;
 	size_t enced_pms_len;
@@ -640,9 +706,12 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 
 	// recv ClientHello
 	tls_trace("recv ClientHello\n");
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1) {
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
@@ -665,6 +734,7 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 		goto end;
 	}
 	memcpy(client_random, random, 32);
+    //选择可用的密码套件
 	if (tls_cipher_suites_select(client_ciphers, client_ciphers_len,
 		server_ciphers, sizeof(server_ciphers)/sizeof(server_ciphers[0]),
 		&conn->cipher_suite) != 1) {
@@ -683,6 +753,7 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 	// send ServerHello
 	tls_trace("send ServerHello\n");
 	tls_random_generate(server_random);
+    //设置server_hello的信息到记录层：服务器随机数+协商后的密码套件id
 	if (tls_record_set_handshake_server_hello(record, &recordlen,
 		TLS_protocol_tlcp, server_random, NULL, 0,
 		conn->cipher_suite, NULL, 0) != 1) {
@@ -691,6 +762,7 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //发送ServerHello
 	if (tls_record_send(record, recordlen, conn->sock) != 1) {
 		error_print();
 		goto end;
@@ -699,6 +771,7 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 
 	// send ServerCertificate
 	tls_trace("send ServerCertificate\n");
+    //设置服务器的证书信息到记录层
 	if (tls_record_set_handshake_certificate(record, &recordlen,
 		conn->server_certs, conn->server_certs_len) != 1) {
 		error_print();
@@ -706,10 +779,12 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //发送ServerCertificate
 	if (tls_record_send(record, recordlen, conn->sock) != 1) {
 		error_print();
 		goto end;
 	}
+    //把记录层消息头（5个字节）后面的内容，加入sm3_update进行计算
 	sm3_update(&sm3_ctx, record + 5, recordlen - 5);
 
 	// send ServerKeyExchange
@@ -721,22 +796,30 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 	}
 	p = server_enc_cert_lenbuf; len = 0;
 	tls_uint24_to_bytes((uint24_t)server_enc_cert_len, &p, &len);
+    //初始化sm2签名
 	if (sm2_sign_init(&sign_ctx, &conn->sign_key, SM2_DEFAULT_ID, SM2_DEFAULT_ID_LENGTH) != 1
+        //输入客户端随机数
 		|| sm2_sign_update(&sign_ctx, client_random, 32) != 1
+        //输入服务端随机数
 		|| sm2_sign_update(&sign_ctx, server_random, 32) != 1
+        //输入服务器加密证书长度的buf
 		|| sm2_sign_update(&sign_ctx, server_enc_cert_lenbuf, 3) != 1
+        //输入服务器加密证书数据
 		|| sm2_sign_update(&sign_ctx, server_enc_cert, server_enc_cert_len) != 1
+        //完成签名运算
 		|| sm2_sign_finish(&sign_ctx, sigbuf, &siglen) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_internal_error);
 		goto end;
 	}
+    //设置sm2签名值
 	if (tlcp_record_set_handshake_server_key_exchange_pke(record, &recordlen, sigbuf, siglen) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_internal_error);
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //发送ServerKeyExchange
 	if (tls_record_send(record, recordlen, conn->sock) != 1) {
 		error_print();
 		goto end;
@@ -750,6 +833,7 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 		size_t ca_names_len = 0;
 
 		tls_trace("send CertificateRequest\n");
+        //从证书数据中获取subject证书的用户名
 		if (tls_authorities_from_certs(ca_names, &ca_names_len, sizeof(ca_names),
 			conn->ca_certs, conn->ca_certs_len) != 1) {
 			error_print();
@@ -782,18 +866,23 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 	// recv ClientCertificate
 	if (conn->ca_certs_len) {
 		tls_trace("recv ClientCertificate\n");
-		if (tls_record_recv(record, &recordlen, conn->sock) != 1
+		if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 			|| tls_record_protocol(record) != TLS_protocol_tlcp) {
 			error_print();
-			tls_send_alert(conn, TLS_alert_unexpected_message);
+            if(iRecvRet<0)
+            {
+                tls_send_alert(conn, TLS_alert_unexpected_message);
+            }
 			goto end;
 		}
 		tlcp_record_trace(stderr, record, recordlen, 0, 0);
+        //解析收到的客户端的证书
 		if (tls_record_get_handshake_certificate(record, conn->client_certs, &conn->client_certs_len) != 1) {
 			error_print();
 			tls_send_alert(conn, TLS_alert_unexpected_message);
 			goto end;
 		}
+        //验证证书的合法性
 		if (x509_certs_verify(conn->client_certs, conn->client_certs_len, X509_cert_chain_client,
 			conn->ca_certs, conn->ca_certs_len, verify_depth, &verify_result) != 1) {
 			error_print();
@@ -805,10 +894,13 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 
 	// ClientKeyExchange
 	tls_trace("recv ClientKeyExchange\n");
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 		|| tls_record_protocol(record) != TLS_protocol_tlcp) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
@@ -817,12 +909,14 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 		tls_send_alert(conn, TLS_alert_unexpected_message);
 		goto end;
 	}
+    //解密预主密钥
 	if (sm2_decrypt(&conn->kenc_key, enced_pms, enced_pms_len,
 		pre_master_secret, &pre_master_secret_len) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_decrypt_error);
 		goto end;
 	}
+    //预主密钥长度是否正确
 	if (pre_master_secret_len != 48) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_decrypt_error);
@@ -831,15 +925,19 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 	sm3_update(&sm3_ctx, record + 5, recordlen - 5);
 
 	// recv CertificateVerify
+    //如果需要验证客户端的身份
 	if (client_verify) {
 		tls_trace("recv CertificateVerify\n");
 		SM3_CTX cert_verify_sm3_ctx = sm3_ctx;
 		uint8_t cert_verify_hash[SM3_DIGEST_SIZE];
 
-		if (tls_record_recv(record, &recordlen, conn->sock) != 1
+		if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 			|| tls_record_protocol(record) != TLS_protocol_tlcp) {
-			tls_send_alert(conn, TLS_alert_unexpected_message);
 			error_print();
+            if(iRecvRet<0)
+            {
+                tls_send_alert(conn, TLS_alert_unexpected_message);
+            }
 			goto end;
 		}
 		tlcp_record_trace(stderr, record, recordlen, 0, 0);
@@ -848,7 +946,9 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 			error_print();
 			goto end;
 		}
+        //获取证书数据
 		if (x509_certs_get_cert_by_index(conn->client_certs, conn->client_certs_len, 0, &cp, &len) != 1
+            //从证书数据中生成公钥
 			|| x509_cert_get_subject_public_key(cp, len, &client_sign_key) != 1) {
 			error_print();
 			tls_send_alert(conn, TLS_alert_bad_certificate);
@@ -856,6 +956,7 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 		}
 
 		sm3_finish(&cert_verify_sm3_ctx, cert_verify_hash);
+        //进行sm2验签
 		if (sm2_verify_init(&verify_ctx, &client_sign_key, SM2_DEFAULT_ID, SM2_DEFAULT_ID_LENGTH) != 1
 			|| sm2_verify_update(&verify_ctx, cert_verify_hash, SM3_DIGEST_SIZE) != 1
 			|| sm2_verify_finish(&verify_ctx, sig, siglen) != 1) {
@@ -868,9 +969,11 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 
 	// generate secrets
 	tls_trace("generate secrets\n");
+    //从预主密钥生成主密钥
 	if (tls_prf(pre_master_secret, 48, "master secret",
 			client_random, 32, server_random, 32,
 			48, conn->master_secret) != 1
+        //从主密钥生成需要实际用到的密钥组
 		|| tls_prf(conn->master_secret, 48, "key expansion",
 			server_random, 32, client_random, 32,
 			96, conn->key_block) != 1) {
@@ -893,13 +996,17 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 
 	// recv [ChangeCipherSpec]
 	tls_trace("recv [ChangeCipherSpec]\n");
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 		|| tls_record_protocol(record) != TLS_protocol_tlcp) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
 	tlcp_record_trace(stderr, record, recordlen, 0, 0);
+    //
 	if (tls_record_get_change_cipher_spec(record) != 1) {
 		error_print();
 		tls_send_alert(conn, TLS_alert_unexpected_message);
@@ -908,10 +1015,13 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 
 	// recv ClientFinished
 	tls_trace("recv Finished\n");
-	if (tls_record_recv(record, &recordlen, conn->sock) != 1
+	if (iRecvRet = tls_record_recv(record, &recordlen, conn->sock) != 1
 		|| tls_record_protocol(record) != TLS_protocol_tlcp) {
 		error_print();
-		tls_send_alert(conn, TLS_alert_unexpected_message);
+        if(iRecvRet<0)
+        {
+            tls_send_alert(conn, TLS_alert_unexpected_message);
+        }
 		goto end;
 	}
 	if (recordlen > sizeof(finished_record)) {
@@ -943,9 +1053,11 @@ int tlcp_do_accept(TLS_CONNECT *conn)
 	}
 
 	// verify ClientFinished
+    //使用临时sm3上下文对象进行对一次完整性校验
 	memcpy(&tmp_sm3_ctx, &sm3_ctx, sizeof(SM3_CTX));
+    sm3_finish(&tmp_sm3_ctx, sm3_hash);
+    //
 	sm3_update(&sm3_ctx, finished_record + 5, finished_record_len - 5);
-	sm3_finish(&tmp_sm3_ctx, sm3_hash);
 	if (tls_prf(conn->master_secret, 48, "client finished", sm3_hash, 32, NULL, 0,
 		sizeof(local_verify_data), local_verify_data) != 1) {
 		error_print();

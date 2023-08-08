@@ -22,6 +22,8 @@ extern "C" {
 #endif
 
 
+//authenticated encryption with additional data encryption（AEAD加密模式）hmac+对称加密
+
 typedef struct {
 	SM4_CBC_CTX enc_ctx;
 	SM3_HMAC_CTX mac_ctx;

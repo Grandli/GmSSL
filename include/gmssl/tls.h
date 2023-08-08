@@ -84,9 +84,9 @@ int tls_uint16array_from_bytes(const uint8_t **data, size_t *datalen, const uint
 int tls_uint24array_from_bytes(const uint8_t **data, size_t *datalen, const uint8_t **in, size_t *inlen);
 int tls_length_is_zero(size_t len);
 
-
+//tls的协议枚举值
 typedef enum {
-	TLS_protocol_tlcp			= 0x0101,
+	TLS_protocol_tlcp			= 0x0101,//GM的tls
 	TLS_protocol_ssl2			= 0x0200,
 	TLS_protocol_ssl3			= 0x0300,
 	TLS_protocol_tls1			= 0x0301,
@@ -99,7 +99,7 @@ typedef enum {
 
 const char *tls_protocol_name(int proto);
 
-
+//密钥套件的定义
 typedef enum {
 	TLS_cipher_null_with_null_null		= 0x0000,
 
@@ -108,9 +108,9 @@ typedef enum {
 	TLS_cipher_sm4_ccm_sm3			= 0x00c7,
 
 	// TLCP, GB/T 38636-2020, GM/T 0024-2012
-	TLS_cipher_ecdhe_sm4_cbc_sm3		= 0xe011, // 可以让TLSv1.2使用这个
+	TLS_cipher_ecdhe_sm4_cbc_sm3		= 0xe011, // gmssl的TLSv1.2使用这个
 	TLS_cipher_ecdhe_sm4_gcm_sm3		= 0xe051,
-	TLS_cipher_ecc_sm4_cbc_sm3		= 0xe013,
+	TLS_cipher_ecc_sm4_cbc_sm3		= 0xe013,//gmssl的tlcp使用这个
 	TLS_cipher_ecc_sm4_gcm_sm3		= 0xe053,
 	TLS_cipher_ibsdh_sm4_cbc_sm3		= 0xe015,
 	TLS_cipher_ibsdh_sm4_gcm_sm3		= 0xe055,
@@ -147,33 +147,33 @@ const char *tls_compression_method_name(int meth);
 
 typedef enum {
 	TLS_record_invalid			= 0,  // TLS 1.3
-	TLS_record_change_cipher_spec		= 20, // 0x14
-	TLS_record_alert			= 21, // 0x15
-	TLS_record_handshake			= 22, // 0x16
-	TLS_record_application_data		= 23, // 0x17
+	TLS_record_change_cipher_spec		= 20, // 0x14  密码规格更换
+	TLS_record_alert			= 21, // 0x15  报警协议
+	TLS_record_handshake			= 22, // 0x16  握手协议
+	TLS_record_application_data		= 23, // 0x17  应用数据
 	TLS_record_heartbeat			= 24, // 0x18
 	TLS_record_tls12_cid			= 25, // 0x19
 } TLS_RECORD_TYPE;
 
 const char *tls_record_type_name(int type);
 
-//TLS握手协议类型
+//TLS握手协议的消息类型
 typedef enum  {
-	TLS_handshake_hello_request		= 0,
-	TLS_handshake_client_hello		= 1,
-	TLS_handshake_server_hello		= 2,
+	TLS_handshake_hello_request		= 0,//
+	TLS_handshake_client_hello		= 1,//客户端发送client_hello
+	TLS_handshake_server_hello		= 2,//服务端发送server_hello
 	TLS_handshake_hello_verify_request	= 3,
 	TLS_handshake_new_session_ticket	= 4,
 	TLS_handshake_end_of_early_data		= 5,
 	TLS_handshake_hello_retry_request	= 6,
 	TLS_handshake_encrypted_extensions	= 8,
-	TLS_handshake_certificate		= 11,
-	TLS_handshake_server_key_exchange	= 12,
-	TLS_handshake_certificate_request	= 13,//
-	TLS_handshake_server_hello_done		= 14,
-	TLS_handshake_certificate_verify	= 15,
-	TLS_handshake_client_key_exchange	= 16,
-	TLS_handshake_finished			= 20,
+	TLS_handshake_certificate		= 11,//发送服务端证书
+	TLS_handshake_server_key_exchange	= 12,//服务端进行密钥交换的处理（发送签名值）
+	TLS_handshake_certificate_request	= 13,//证书请求
+	TLS_handshake_server_hello_done		= 14,//服务端结束hello
+	TLS_handshake_certificate_verify	= 15,//证书校验
+	TLS_handshake_client_key_exchange	= 16,//客户端进行密钥交换的发送（预主密钥的密文）
+	TLS_handshake_finished			= 20,//握手结束协议
 	TLS_handshake_certificate_url		= 21,
 	TLS_handshake_certificate_status	= 22,
 	TLS_handshake_supplemental_data		= 23,
@@ -279,8 +279,8 @@ const char *tls_ec_point_format_name(int format);
 
 
 typedef enum {
-	TLS_curve_type_explicit_prime		= 1,
-	TLS_curve_type_explicit_char2		= 2,
+	TLS_curve_type_explicit_prime		= 1,   //基于有限域上的椭圆曲线，也称为素域曲线
+	TLS_curve_type_explicit_char2		= 2,   //基于二元有限域上的椭圆曲线，也称为特征为2的域上的椭圆曲线
 	TLS_curve_type_named_curve		= 3,
 } TLS_CURVE_TYPE;
 
@@ -341,15 +341,16 @@ typedef enum {
 	TLS_change_cipher_spec = 1,
 } TLS_CHANGE_CIPHER_SPEC_TYPE;
 
-
+//警告等级枚举类型
 typedef enum {
 	TLS_alert_level_warning = 1,
 	TLS_alert_level_fatal = 2,
 } TLS_ALERT_LEVEL;
 
+//获取警告等级的说明
 const char *tls_alert_level_name(int level);
 
-
+//警告相关枚举类型
 typedef enum {
 	TLS_alert_close_notify			= 0,
 	TLS_alert_unexpected_message		= 10,
@@ -384,6 +385,7 @@ typedef enum {
 	TLS_alert_identity_need			= 205,
 } TLS_ALERT_DESCRIPTION;
 
+//获取警告相关类型描述
 const char *tls_alert_description_text(int description);
 
 
@@ -458,7 +460,7 @@ int tls_record_recv(uint8_t *record, size_t *recordlen, tls_socket_t sock);
 int tls12_record_recv(uint8_t *record, size_t *recordlen, tls_socket_t sock);
 
 
-// Handshake
+// Handshake 握手协议的头
 typedef struct {
 	uint8_t type;
 	uint8_t length[3];
@@ -737,8 +739,8 @@ void tls_ctx_cleanup(TLS_CTX *ctx);
 
 
 typedef struct {
-	int protocol;
-	int is_client;
+	int protocol;//
+	int is_client;//是否是客户端
 	int cipher_suites[TLS_MAX_CIPHER_SUITES_COUNT];
 	size_t cipher_suites_cnt;
 	tls_socket_t sock;   //通信的socket

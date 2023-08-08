@@ -92,7 +92,7 @@ bad:
 		error_print();
 		goto end;
 	}
-	if (sm9_encrypt(&mpk, id, strlen(id), inbuf, inlen, outbuf, &outlen, 0) != 1) {
+	if (sm9_encrypt((SM9_ENC_PUBLIC_KEY *)&mpk, id, strlen(id), inbuf, inlen, outbuf, &outlen, 0) != 1) {
 		error_print();
 		goto end;
 	}

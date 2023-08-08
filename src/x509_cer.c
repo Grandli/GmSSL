@@ -1230,8 +1230,9 @@ int x509_signed_verify_by_ca_cert(const uint8_t *a, size_t alen,
 {
 	int ret;
 	SM2_KEY public_key;
-
+	//从证书中获取公钥
 	if (x509_cert_get_subject_public_key(cacert, cacertlen, &public_key) != 1
+		//用公钥进行验签
 		|| (ret = x509_signed_verify(a, alen, &public_key, signer_id, signer_id_len)) < 0) {
 		error_print();
 		return -1;
@@ -1954,11 +1955,12 @@ int x509_certs_verify_tlcp(const uint8_t *certs, size_t certslen, int certs_type
 		path_len++;
 	}
 
-
+	//获取证书颁发者（issuer）
 	if (x509_cert_get_issuer(cert, certlen, &name, &namelen) != 1) {
 		error_print();
 		return -1;
 	}
+	//获取证书拥有者的名字（subject）
 	if (x509_certs_get_cert_by_subject(rootcerts, rootcertslen, name, namelen, &cacert, &cacertlen) != 1) {
 		error_print();
 		return -1;
@@ -1981,7 +1983,7 @@ int x509_certs_verify_tlcp(const uint8_t *certs, size_t certslen, int certs_type
 			return -1;
 		}
 	}
-
+	//用ca证书进行验签
 	if (x509_cert_verify_by_ca_cert(cert, certlen, cacert, cacertlen,
 		SM2_DEFAULT_ID, SM2_DEFAULT_ID_LENGTH) != 1) {
 		error_print();

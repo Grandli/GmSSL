@@ -100,8 +100,11 @@ bad:
 		return -1;
 	}
 
+    //tls初始化：版本和服务器模式
 	if (tls_ctx_init(&ctx, TLS_protocol_tls12, TLS_server_mode) != 1
+        //设置支持的密码套件
 		|| tls_ctx_set_cipher_suites(&ctx, server_ciphers, sizeof(server_ciphers)/sizeof(int)) != 1
+        //设置证书文件和密钥文件和口令
 		|| tls_ctx_set_certificate_and_key(&ctx, certfile, keyfile, pass) != 1) {
 		error_print();
 		return -1;
@@ -142,12 +145,14 @@ restart:
 	}
 	puts("socket connected\n");
 
+    //tls初始化
 	if (tls_init(&conn, &ctx) != 1
+        //设置socket连接
 		|| tls_set_socket(&conn, conn_sock) != 1) {
 		error_print();
 		return -1;
 	}
-
+    //tls握手协商
 	if (tls_do_handshake(&conn) != 1) {
 		error_print(); // 为什么这个会触发呢？
 		return -1;

@@ -88,7 +88,7 @@ bad:
 		fprintf(stderr, "%s: '-in' option required\n", prog);
 		return -1;
 	}
-
+    //tls的socket网络库初始化
 	if (tls_socket_lib_init() != 1) {
 		error_print();
 		return -1;
@@ -106,38 +106,43 @@ bad:
 	server.sin_family = AF_INET;
 	server.sin_port = htons(port);
 
-
+    //创建socket
 	if (tls_socket_create(&sock, AF_INET, SOCK_STREAM, 0) != 1) {
 		fprintf(stderr, "%s: open socket error\n", prog);
 		goto end;
 	}
 	sock_inited = 1;
-
+    //进行socket连接
 	if (tls_socket_connect(sock, &server) != 1) {
 		fprintf(stderr, "%s: socket connect error\n", prog);
 		goto end;
 	}
-
+    //初始化tls上下文
 	if (tls_ctx_init(&ctx, TLS_protocol_tlcp, TLS_client_mode) != 1
+        //设置支持的密码套件
 		|| tls_ctx_set_cipher_suites(&ctx, client_ciphers, sizeof(client_ciphers)/sizeof(client_ciphers[0])) != 1) {
 		fprintf(stderr, "%s: context init error\n", prog);
 		goto end;
 	}
 	if (cacertfile) {
+        //设置ca证书文件
 		if (tls_ctx_set_ca_certificates(&ctx, cacertfile, TLS_DEFAULT_VERIFY_DEPTH) != 1) {
 			fprintf(stderr, "%s: context init error\n", prog);
 			goto end;
 		}
 	}
 	if (certfile) {
+        //设置证书和密钥
 		if (tls_ctx_set_certificate_and_key(&ctx, certfile, keyfile, pass) != 1) {
 			fprintf(stderr, "%s: context init error\n", prog);
 			goto end;
 		}
 	}
-
+    //初始化tls网络连接
 	if (tls_init(&conn, &ctx) != 1
+        //设置tls的socket网络连接
 		|| tls_set_socket(&conn, sock) != 1
+        //开始请求连接：接发信息进行握手协商通讯
 		|| tls_do_handshake(&conn) != 1) {
 		fprintf(stderr, "%s: error\n", prog);
 		goto end;

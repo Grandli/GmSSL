@@ -33,4 +33,10 @@ int ComHexToStr(const char *inData, unsigned char *outBuf, int inLen);
 //按16进制打印内存数据
 void dumpMem(unsigned char *data, int len);
 
+//把数据写入到文件（新建文件，或者覆盖文件）
+int ComWriteFile(char *filename, unsigned char *data, unsigned int dataLen);
+
+//从文件读取所有数据（dataLen需要传data的长度，以保证能正常的读取）
+int ComReadFile(char *filename, unsigned char *data, unsigned int *dataLen);
+
 #endif //GMSSL_DEMO_UTIL_H

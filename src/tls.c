@@ -264,6 +264,7 @@ int tls_record_set_data(uint8_t *record, const uint8_t *data, size_t datalen)
 	return 1;
 }
 
+//加密过程处理
 int tls_cbc_encrypt(const SM3_HMAC_CTX *inited_hmac_ctx, const SM4_KEY *enc_key,
 	const uint8_t seq_num[8], const uint8_t header[5],
 	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen)
@@ -321,10 +322,12 @@ int tls_cbc_encrypt(const SM3_HMAC_CTX *inited_hmac_ctx, const SM4_KEY *enc_key,
 		iv = out - 16;
 	}
 	sm4_cbc_encrypt(enc_key, iv, last_blocks, sizeof(last_blocks)/16, out);
+    //iv + 加密（明文+mac+填充长度）
 	*outlen = 16 + inlen - rem + sizeof(last_blocks);
 	return 1;
 }
 
+//解密过程处理
 int tls_cbc_decrypt(const SM3_HMAC_CTX *inited_hmac_ctx, const SM4_KEY *dec_key,
 	const uint8_t seq_num[8], const uint8_t enced_header[5],
 	const uint8_t *in, size_t inlen, uint8_t *out, size_t *outlen)
@@ -382,6 +385,7 @@ int tls_cbc_decrypt(const SM3_HMAC_CTX *inited_hmac_ctx, const SM4_KEY *dec_key,
 	sm3_hmac_update(&hmac_ctx, header, 5);
 	sm3_hmac_update(&hmac_ctx, out, *outlen);
 	sm3_hmac_finish(&hmac_ctx, hmac);
+    //验证hmac数据的来源和完整性
 	if (gmssl_secure_memcmp(mac, hmac, sizeof(hmac)) != 0) {
 		error_puts("tls ciphertext mac check failure\n");
 		return -1;
@@ -430,6 +434,7 @@ int tls_record_decrypt(const SM3_HMAC_CTX *hmac_ctx, const SM4_KEY *cbc_key,
 	return 1;
 }
 
+//tls生成随机数处理（时间戳+28位的随机数）
 int tls_random_generate(uint8_t random[32])
 {
 	uint32_t gmt_unix_time = (uint32_t)time(NULL);
@@ -443,6 +448,7 @@ int tls_random_generate(uint8_t random[32])
 	return 1;
 }
 
+//伪随机函数prf
 int tls_prf(const uint8_t *secret, size_t secretlen, const char *label,
 	const uint8_t *seed, size_t seedlen,
 	const uint8_t *more, size_t morelen,
@@ -500,6 +506,7 @@ int tls_prf(const uint8_t *secret, size_t secretlen, const char *label,
 	return 1;
 }
 
+//生成预主密钥（协议+46位的随机数）
 int tls_pre_master_secret_generate(uint8_t pre_master_secret[48], int protocol)
 {
 	if (!tls_protocol_name(protocol)) {
@@ -651,7 +658,9 @@ int tls_record_get_handshake(const uint8_t *record,
 		error_print();
 		return -1;
 	}
+    //提取握手协议的数据
 	handshake = tls_record_data(record);
+    //提取握手协议的数据长度
 	handshake_len = tls_record_data_length(record);
 
 	if (handshake_len < TLS_HANDSHAKE_HEADER_SIZE) {
@@ -668,10 +677,12 @@ int tls_record_get_handshake(const uint8_t *record,
 		error_print();
 		return -1;
 	}
+    //握手类型
 	*type = handshake[0];
 
 	handshake++;
 	handshake_len--;
+    //获取握手消息的长度
 	if (tls_uint24_from_bytes(&handshake_datalen, &handshake, &handshake_len) != 1) {
 		error_print();
 		return -1;
@@ -680,6 +691,7 @@ int tls_record_get_handshake(const uint8_t *record,
 		error_print();
 		return -1;
 	}
+    //握手消息内容
 	*data = handshake;
 	*datalen = handshake_datalen;
 
@@ -1455,6 +1467,7 @@ int tls_cipher_suite_in_list(int cipher, const int *list, size_t list_count)
 	return 0;
 }
 
+//实际的发送记录层消息
 int tls_record_send(const uint8_t *record, size_t recordlen, tls_socket_t sock)
 {
 	tls_ret_t r;
@@ -1467,12 +1480,14 @@ int tls_record_send(const uint8_t *record, size_t recordlen, tls_socket_t sock)
 		error_print();
 		return -1;
 	}
+    //获取需要发送的包的长度是否正确
 	if (tls_record_length(record) != recordlen) {
 		error_print();
 		return -1;
 	}
+    //实际的网络发送数据
 	if ((r = tls_socket_send(sock, record, recordlen, 0)) < 0) {
-		perror("tls_record_send");
+		tls_trace("tls_record_send");
 		error_print();
 		return -1;
 	} else if (r != recordlen) {
@@ -1482,34 +1497,39 @@ int tls_record_send(const uint8_t *record, size_t recordlen, tls_socket_t sock)
 	return 1;
 }
 
+//实际的接收消息
 int tls_record_do_recv(uint8_t *record, size_t *recordlen, tls_socket_t sock)
 {
 	tls_ret_t r;
 	size_t len;
 
 	len = 5;
+    //先接收record消息头（5个字节的长度）
 	while (len) {
 		if ((r = tls_socket_recv(sock, record + 5 - len, len, 0)) < 0) {
-			perror("tls_record_do_recv");
+			tls_trace("tls_record_do_recv");
 			error_print();
 			return -1;
 		}
 		if (r == 0) {
-			perror("tls_record_do_recv");
+            tls_trace("tls_record_do_recv");
 			error_print();
 			return 0;
 		}
 
 		len -= r;
 	}
+    //获取消息类型是否存在
 	if (!tls_record_type_name(tls_record_type(record))) {
 		error_print();
 		return -1;
 	}
+    //获取协议类型是否存在
 	if (!tls_protocol_name(tls_record_protocol(record))) {
 		error_print();
 		return -1;
 	}
+    //获取消息长度
 	len = (size_t)record[3] << 8 | record[4];
 	*recordlen = 5 + len;
 	if (*recordlen > TLS_MAX_RECORD_SIZE) {
@@ -1517,9 +1537,10 @@ int tls_record_do_recv(uint8_t *record, size_t *recordlen, tls_socket_t sock)
 		error_print();
 		return -1;
 	}
+    //持续接收需要接收到的数据
 	while (len) {
 		if ((r = recv(sock, record + *recordlen - len, (int)len, 0)) < 0) { // winsock2 recv() use int
-			perror("tls_record_do_recv");
+            tls_trace("tls_record_do_recv");
 			error_print();
 			return -1;
 		}
@@ -1535,7 +1556,7 @@ retry:
 		error_print();
 		return -1;
 	}
-
+    //如果是警告协议消息类型
 	if (tls_record_type(record) == TLS_record_alert) {
 		int level;
 		int alert;
@@ -1592,7 +1613,7 @@ int tls_compression_methods_has_null_compression(const uint8_t *meths, size_t me
 	error_print();
 	return -1;
 }
-
+//发送（TLS_alert_level_fatal）警告协议
 int tls_send_alert(TLS_CONNECT *conn, int alert)
 {
 	uint8_t record[5 + 2];
@@ -1628,7 +1649,7 @@ int tls_alert_level(int alert)
 	}
 	return TLS_alert_level_fatal;	
 }
-
+//发送（TLS_alert_level_warning）警告协议
 int tls_send_warning(TLS_CONNECT *conn, int alert)
 {
 	uint8_t record[5 + 2];
@@ -1653,6 +1674,7 @@ int tls_send_warning(TLS_CONNECT *conn, int alert)
 	return 1;
 }
 
+//发送应用层消息
 int tls_send(TLS_CONNECT *conn, const uint8_t *in, size_t inlen, size_t *sentlen)
 {
 	const SM3_HMAC_CTX *hmac_ctx;
@@ -1686,24 +1708,26 @@ int tls_send(TLS_CONNECT *conn, const uint8_t *in, size_t inlen, size_t *sentlen
 	record = conn->record;
 
 	tls_trace("send ApplicationData\n");
-
+    //设置消息类型
 	if (tls_record_set_type(record, TLS_record_application_data) != 1
 		|| tls_record_set_protocol(record, conn->protocol) != 1
 		|| tls_record_set_length(record, inlen) != 1) {
 		error_print();
 		return -1;
 	}
-
+    //加密处理
 	if (tls_cbc_encrypt(hmac_ctx, enc_key, seq_num, tls_record_header(record),
 		in, inlen, tls_record_data(record), &datalen) != 1) {
 		error_print();
 		return -1;
 	}
+    //设置需要发送的消息长度
 	if (tls_record_set_length(record, datalen) != 1) {
 		error_print();
 		return -1;
 	}
 	tls_seq_num_incr(seq_num);
+    //实际的发送消息
 	if (tls_record_send(record, tls_record_length(record), conn->sock) != 1) {
 		error_print();
 		return -1;
@@ -1740,6 +1764,7 @@ int tls_do_recv(TLS_CONNECT *conn)
 	}
 
 	tls_record_trace(stderr, record, recordlen, 0, 0);
+    //解密数据
 	if (tls_cbc_decrypt(hmac_ctx, dec_key, seq_num, record,
 		tls_record_data(record), tls_record_data_length(record),
 		conn->databuf, &conn->datalen) != 1) {
@@ -2118,6 +2143,7 @@ int tls_ctx_set_certificate_and_key(TLS_CTX *ctx, const char *chainfile,
 		error_print();
 		goto end;
 	}
+    //从私钥证书中加载私钥
 	if (sm2_private_key_info_decrypt_from_pem(&key, keypass, keyfp) != 1) {
 		error_print();
 		goto end;
@@ -2275,7 +2301,7 @@ int tls_set_socket(TLS_CONNECT *conn, tls_socket_t sock)
 	// FIXME: do we still need this? when using select?
 	if ((opts = fcntl(sock, F_GETFL)) < 0) {
 		error_print();
-		perror("tls_set_socket");
+		tls_trace("tls_set_socket");
 		return -1;
 	}
 	opts &= ~O_NONBLOCK;

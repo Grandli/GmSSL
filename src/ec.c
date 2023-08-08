@@ -41,6 +41,7 @@ static const ASN1_OID_INFO ec_named_curves[] = {
 static const int ec_named_curves_count =
 	sizeof(ec_named_curves)/sizeof(ec_named_curves[0]);
 
+//通过oid获取曲线的名字
 const char *ec_named_curve_name(int oid)
 {
 	const ASN1_OID_INFO *info;
@@ -51,6 +52,7 @@ const char *ec_named_curve_name(int oid)
 	return info->name;
 }
 
+//通过曲线名获取oid
 int ec_named_curve_from_name(const char *name)
 {
 	const ASN1_OID_INFO *info;

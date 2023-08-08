@@ -106,7 +106,7 @@ bad:
 			goto end;
 		}
 	}
-	if ((ret = sm9_verify_finish(&ctx, sig, siglen, &mpk, id, strlen(id))) != 1) {
+	if ((ret = sm9_verify_finish(&ctx, sig, siglen, (SM9_SIGN_PUBLIC_KEY *)&mpk, id, strlen(id))) != 1) {
 		error_print();
 		goto end;
 	}

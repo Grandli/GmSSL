@@ -805,7 +805,9 @@ int tls12_do_accept(TLS_CONNECT *conn)
 
 	// send ServerKeyExchange
 	tls_trace("send ServerKeyExchange\n");
+    //生成sm2临时密钥对
 	sm2_key_generate(&server_ecdhe_key);
+    //使用
 	if (tls_sign_server_ecdh_params(&conn->sign_key,
 		client_random, server_random, TLS_curve_sm2p256v1, &server_ecdhe_key.public_key,
 		sigbuf, &siglen) != 1) {

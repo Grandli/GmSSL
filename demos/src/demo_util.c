@@ -154,3 +154,50 @@ void dumpMem(unsigned char *data, int len)
         printf("0x%02x,",(unsigned char)(data[i]));
     printf("\n----dump end---\n");
 }
+
+//把数据写入到文件（新建文件，或者覆盖文件）
+int ComWriteFile(char *filename, unsigned char *data, unsigned int dataLen)
+{
+    int ret = 1;
+    FILE *fp = fopen(filename, "wb");
+    if(!fp) {
+        return -1;
+    }
+    ret = fwrite(data, 1, dataLen, fp);
+    if(ret != dataLen) {
+        return -2;
+    }
+    fclose(fp);
+    return 1;
+}
+
+//从文件读取所有数据（dataLen需要传data的长度，以保证能正常的读取）
+int ComReadFile(char *filename, unsigned char *data, unsigned int *dataLen)
+{
+    int ret = 1;
+    int fLen = 0;
+    FILE *fp = fopen(filename, "rb");
+    if(!fp) {
+        return -1;
+    }
+    //先将指针偏移到文件尾
+    fseek(fp, 0, SEEK_END);
+    fLen = ftell(fp);
+    if(fLen>*dataLen) {
+        *dataLen = fLen;
+        fclose(fp);
+        return -2;
+    }
+    //再将指针偏移到文件头
+    fseek(fp, 0, SEEK_SET);
+    //读取文件
+    ret = fread(data, 1, fLen, fp);
+    if(ret != fLen) {
+        fclose(fp);
+        return -3;
+    }
+    *dataLen = fLen;
+
+    fclose(fp);
+    return 1;
+}

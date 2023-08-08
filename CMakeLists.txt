@@ -7,6 +7,9 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+
+#add_definitions(-DTLS_DEBUG)
+
 include_directories(include)
 
 set(src
@@ -186,7 +189,9 @@ set(demos
 	demo_sm9_encrypt
 	demo_sm9_keygen
 	demo_sm9_sign
+	demo_tlcp_client
 	demo_tlcp_get
+	demo_tlcp_server
 #	demo_tlcp_post
 #	demo_wget
 	demo_zuc
@@ -310,7 +315,8 @@ elseif (APPLE)
 elseif (MINGW)
 	target_link_libraries(gmssl PRIVATE wsock32)
 else()
-	target_link_libraries(gmssl dl)
+	target_link_libraries(gmssl PUBLIC dl
+			pthread)
 endif()
 
 

@@ -1413,7 +1413,7 @@ TLS 1.3的区别：
 */
 
 
-
+//tls1.3 客户端握手
 int tls13_do_connect(TLS_CONNECT *conn)
 {
 	int ret = -1;
@@ -1500,8 +1500,10 @@ int tls13_do_connect(TLS_CONNECT *conn)
 	tls_trace("send ClientHello\n");
 	tls_record_set_protocol(record, TLS_protocol_tls1);
 	rand_bytes(client_random, 32); // TLS 1.3 Random 不再包含 UNIX Time
+    //生成sm2密钥对
 	sm2_key_generate(&client_ecdhe);
 	tls13_client_hello_exts_set(client_exts, &client_exts_len, sizeof(client_exts), &(client_ecdhe.public_key));
+
 	tls_record_set_handshake_client_hello(record, &recordlen,
 		TLS_protocol_tls12, client_random, NULL, 0,
 		tls13_ciphers, sizeof(tls13_ciphers)/sizeof(tls13_ciphers[0]),
@@ -2145,6 +2147,7 @@ int tls13_do_accept(TLS_CONNECT *conn)
 
 	// send Server {CertificateVerify}
 	tls_trace("send {CertificateVerify}\n");
+    //签名运算
 	tls13_sign_certificate_verify(TLS_server_mode, &conn->sign_key, TLS13_SM2_ID, TLS13_SM2_ID_LENGTH, &dgst_ctx, sig, &siglen);
 	if (tls13_record_set_handshake_certificate_verify(record, &recordlen,
 		TLS_sig_sm2sig_sm3, sig, siglen) != 1) {

@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 
 	memset(&ctx, 0, sizeof(ctx));
 	memset(&conn, 0, sizeof(conn));
-    //初始化tls上下文
+    //初始化tls上下文（设置tls协议和客户端模式）
 	tls_ctx_init(&ctx, TLS_protocol_tlcp, TLS_client_mode);
     //设置密码套件
 	tls_ctx_set_cipher_suites(&ctx, &cipher, 1);
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
              "sm2only.ovssl.cn");
     //发送请求
 	tls_send(&conn, (uint8_t *)request, strlen(request), &len);
-    //接收发挥数据
+    //接收数据
 	if (tls_recv(&conn, buf, sizeof(buf), &len) != 1) {
 		fprintf(stderr, "recv failure\n");
 		goto end;

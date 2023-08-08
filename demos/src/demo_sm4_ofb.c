@@ -27,17 +27,18 @@ unsigned int DoSm4Test()
     unsigned char iv[16];
     char *originIV="0123456789abcdeffedcba9876543210";
     char *plain =  "0123456789abcdeffedcba98765432100123456789abcdeffedcba98765432100123456789abcdeffedcba98765432100123456789abcdef";
-    unsigned int plainLen = strlen(plain);
+    size_t plainLen = strlen(plain);
     //明文数据
     unsigned char *message = (unsigned char *)malloc(plainLen);
-    unsigned int messageLen = plainLen;
+    size_t messageLen = plainLen;
     //密文数据
     unsigned char *cipherData = (unsigned char *)malloc(plainLen+16);
-    unsigned int cipherLen = plainLen+16;
+    size_t cipherLen = plainLen+16;
     //解密后的数据
     unsigned char *outData = (unsigned char *)malloc(plainLen+16);
-    unsigned int outLen = plainLen+16;
+    size_t outLen = plainLen+16;
     int i;
+    char *realPlainData = NULL;
 
     messageLen = ComHexToStr(plain, message, plainLen);
     //rand_bytes(key, sizeof(key));
@@ -46,7 +47,6 @@ unsigned int DoSm4Test()
     ComHexToStr(originKey, key, 32);
  //   memcpy(iv, originIV, 16);
 //    memcpy(key, originKey, 16);
-
 
 
     sm4_set_encrypt_key(&sm4_key, key);
@@ -63,6 +63,9 @@ unsigned int DoSm4Test()
     sm4_ofb_decrypt(&sm4_key, iv, cipherData, messageLen, outData);
 
     dumpMem(outData, messageLen);
+    realPlainData = ComStrToHex(outData, messageLen, false);
+    realPlainData[messageLen*2] = '\0';
+    printf("out PlainData = %s\n", realPlainData);
 
     return messageLen;
 }
@@ -75,19 +78,18 @@ unsigned int DoSm4Test2()
     unsigned char iv[16];
     char *originIV="0123456789abcdeffedcba9876543210";
     char *plain =  "0123456789abcdeffedcba98765432100123456789abcdeffedcba98765432100123456789abcdeffedcba98765432100123456789abcdef";
-    unsigned int plainLen = strlen(plain);
+    size_t plainLen = strlen(plain);
     //明文数据
     unsigned char *message = (unsigned char *)malloc(plainLen);
-    unsigned int messageLen = plainLen;
+    size_t messageLen = plainLen;
     //密文数据
     unsigned char *cipherData = (unsigned char *)malloc(plainLen+16);
-    unsigned int cipherLen = 0;
-    unsigned int cipherLen2 = 0;
+    size_t cipherLen = 0;
+    size_t cipherLen2 = 0;
     //解密后的数据
     unsigned char *outData = (unsigned char *)malloc(plainLen+16);
-    unsigned int outLen = 0;
-    unsigned int outLen2 = 0;
-    int i;
+    size_t outLen = 0;
+    size_t outLen2 = 0;
 
     memcpy(message, plain, plainLen);
     //rand_bytes(key, sizeof(key));

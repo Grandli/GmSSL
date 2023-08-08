@@ -122,7 +122,8 @@ unsigned int DoSm4Test2()
     sm4_cfb_decrypt_finish(&cfbCtx, outData+outLen, &outLen2);
     outLen += outLen2;
 
-    dumpMem(outData, outLen);
+    //dumpMem(outData, outLen);
+    printf("outData = %s\n", outData);
 
     return messageLen;
 }

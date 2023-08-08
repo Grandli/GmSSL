@@ -110,26 +110,30 @@ bad:
 
 	memset(&ctx, 0, sizeof(ctx));
 	memset(&conn, 0, sizeof(conn));
-
+    //初始化tls 上下文
 	if (tls_ctx_init(&ctx, TLS_protocol_tlcp, TLS_server_mode) != 1
+        //设置支持的密码套件
 		|| tls_ctx_set_cipher_suites(&ctx, server_ciphers, sizeof(server_ciphers)/sizeof(int)) != 1
+        //设置证书和密钥等
 		|| tls_ctx_set_tlcp_server_certificate_and_keys(&ctx, certfile, signkeyfile, signpass, enckeyfile, encpass) != 1) {
 		error_print();
 		return -1;
 	}
 	if (cacertfile) {
+        //设置ca证书文件
 		if (tls_ctx_set_ca_certificates(&ctx, cacertfile, TLS_DEFAULT_VERIFY_DEPTH) != 1) {
 			error_print();
 			return -1;
 		}
 	}
 
-
+    //tls的socket网络库初始化
 	if (tls_socket_lib_init() != 1) {
 		error_print();
 		return -1;
 	}
 
+    //创建网络socket
 	if (tls_socket_create(&sock, AF_INET, SOCK_STREAM, 0) != 1) {
 		error_print();
 		return 1;
@@ -138,31 +142,35 @@ bad:
 	server_addr.sin_addr.s_addr = INADDR_ANY;
 	server_addr.sin_port = htons(port);
 
+    //绑定监听地址和端口
 	if (tls_socket_bind(sock, &server_addr) != 1) {
 		fprintf(stderr, "%s: socket bind error\n", prog);
 		goto end;
 	}
 
 	puts("start listen ...\n");
+    //开始网络监听
 	tls_socket_listen(sock, 1);
 
 
 restart:
 
 	client_addrlen = sizeof(client_addr);
-
+    //接受socket连接
 	if (tls_socket_accept(sock, &client_addr, &conn_sock) != 1) {
 		fprintf(stderr, "%s: socket accept error\n", prog);
 		goto end;
 	}
 	puts("socket connected\n");
 
+    //初始化tls的socket连接
 	if (tls_init(&conn, &ctx) != 1
 		|| tls_set_socket(&conn, conn_sock) != 1) {
 		error_print();
 		return -1;
 	}
 
+    //开始接受连接：接发信息进行握手协商通讯
 	if (tls_do_handshake(&conn) != 1) {
 		error_print(); // 为什么这个会触发呢？
 		return -1;
