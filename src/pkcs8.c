@@ -80,7 +80,7 @@ int pbkdf2_prf_from_der(int *oid, const uint8_t **in, size_t *inlen)
 		error_print();
 		return -1;
 	}
-	*oid = OID_hmac_sm3;
+	*oid = OID_hmac_sm3;  //算法oid
 	return 1;
 }
 
@@ -97,10 +97,11 @@ int pbkdf2_params_to_der(
 		|| asn1_int_to_der(keylen, NULL, &len) < 0
 		|| pbkdf2_prf_to_der(prf, NULL, &len) < 0
 		|| asn1_sequence_header_to_der(len, out, outlen) != 1
-		|| asn1_octet_string_to_der(salt, saltlen, out, outlen) != 1
-		|| asn1_int_to_der(iter, out, outlen) != 1
-		|| asn1_int_to_der(keylen, out, outlen) < 0
-		|| pbkdf2_prf_to_der(prf, out, outlen) < 0) {
+		|| asn1_octet_string_to_der(salt, saltlen, out, outlen) != 1  //盐值
+		|| asn1_int_to_der(iter, out, outlen) != 1   //迭代次数
+		|| asn1_int_to_der(keylen, out, outlen) < 0  //密钥长度
+		|| pbkdf2_prf_to_der(prf, out, outlen) < 0)  //算法oid
+    {
 		error_print();
 		return -1;
 	}
@@ -122,10 +123,10 @@ int pbkdf2_params_from_der(
 		if (ret < 0) error_print();
 		return ret;
 	}
-	if (asn1_octet_string_from_der(salt, saltlen, &d, &dlen) != 1
-		|| asn1_int_from_der(iter, &d, &dlen) != 1
-		|| asn1_int_from_der(keylen, &d, &dlen) < 0
-		|| pbkdf2_prf_from_der(prf, &d, &dlen) < 0
+	if (asn1_octet_string_from_der(salt, saltlen, &d, &dlen) != 1 //盐值
+		|| asn1_int_from_der(iter, &d, &dlen) != 1  //迭代次数
+		|| asn1_int_from_der(keylen, &d, &dlen) < 0  //密钥长度
+		|| pbkdf2_prf_from_der(prf, &d, &dlen) < 0  //hmac算法oid
 		|| asn1_check(*saltlen > 0) != 1
 		|| asn1_check(*iter > 0) != 1
 		|| asn1_length_is_zero(dlen) != 1) {
@@ -201,6 +202,7 @@ int pbkdf2_algor_from_der(
 	}
 	if (asn1_object_identifier_from_der(nodes, &nodes_cnt, &d, &dlen) != 1
 		|| asn1_object_identifier_equ(nodes, nodes_cnt, oid_pbkdf2, oid_pbkdf2_cnt) != 1
+        //获取盐值，迭代次数，密钥长度，hmac算法oid
 		|| pbkdf2_params_from_der(salt, saltlen, iter, keylen, prf, &d, &dlen) != 1
 		|| asn1_length_is_zero(dlen) != 1) {
 		error_print();
@@ -296,7 +298,9 @@ int pbes2_params_from_der(
 		if (ret < 0) error_print();
 		return ret;
 	}
+    //获取盐值，迭代次数，密钥长度，hmac算法oid
 	if (pbkdf2_algor_from_der(salt, saltlen, iter, keylen, prf, &d, &dlen) != 1
+        //获取分组算法oid，初始向量
 		|| pbes2_enc_algor_from_der(cipher, iv, ivlen, &d, &dlen) != 1
 		|| asn1_length_is_zero(dlen) != 1) {
 		error_print();
@@ -362,6 +366,7 @@ int pbes2_algor_from_der(
 	}
 	if (asn1_object_identifier_from_der(nodes, &nodes_cnt, &d, &dlen) != 1
 		|| asn1_object_identifier_equ(nodes, nodes_cnt, oid_pbes2, oid_pbes2_cnt) != 1
+        //盐值，迭代次数，密钥长度，hmac算法oid，分组算法oid，初始向量
 		|| pbes2_params_from_der(salt, saltlen, iter, keylen, prf, cipher, iv, ivlen, &d, &dlen) != 1
 		|| asn1_length_is_zero(dlen) != 1) {
 		error_print();

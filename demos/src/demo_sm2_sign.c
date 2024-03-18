@@ -18,7 +18,7 @@ SM2_KEY sm2_key;
 SM2_KEY pub_key;
 unsigned char dgst[32];
 
-#define OneTimeTestAmount  5*1024
+#define OneTimeTestAmount  1024
 //提前准备sm2测试
 void PrePareSM2SignTest()
 {

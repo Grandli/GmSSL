@@ -17,21 +17,6 @@
 
 #define OneTimeTestAmount  8*1024
 
-//把字符串数据转为十六进制的字符串
-static char *ComStrToHex(unsigned char *inData, int inLen, bool bUpper)
-{
-    int outLen = inLen * 2 +2;
-    int i = 0;
-    char *outData = (char*) malloc(outLen);
-    if (!outData)
-        return "";
-    memset(outData, 0, outLen);
-
-    for(i=0; i<inLen; i++){
-        sprintf(outData+i*2, bUpper?"%02X":"%02x", inData[i]);
-    }
-    return outData;
-}
 
 unsigned int doSm3Test()
 {
@@ -41,10 +26,11 @@ unsigned int doSm3Test()
     uint8_t dgst[32];
 
     sm3_init(&sm3_ctx);
-    sm3_update(&sm3_ctx, buf, len);
+    sm3_update(&sm3_ctx, buf, strlen(buf));
     sm3_finish(&sm3_ctx, dgst);
     //sm3_digest(buf, len, dgst);
     //printf("dgst = %s\n", ComStrToHex(dgst, 32, true));
+    dumpMem(dgst, 32);
 
     return OneTimeTestAmount;
 }
@@ -52,7 +38,7 @@ unsigned int doSm3Test()
 int main(int argc, char **argv)
 {
 
-    demoDoUtilTest(doSm3Test, 3, "sm3");
+    demoDoUtilTest(doSm3Test, 1, "sm3");
 
 	return 0;
 }

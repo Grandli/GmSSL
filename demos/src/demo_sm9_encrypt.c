@@ -58,6 +58,7 @@ unsigned int DoSm9Test() {
     if (ret != 1) {
         return 0;
     }
+    //dumpMem(cipherData, cipherLen);
     //printf("sm9_encrypt cipherLen = %ld", cipherLen);
     ret = sm9_decrypt(&key, id, idLen, cipherData, cipherLen, (uint8_t *)outData, &outLen);
     if (ret != 1) {
